@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 from database.models import Base, ChatSession, CrisisEvent
+from database.doctor_models import Doctor, Patient, Appointment, Prescription, DoctorRecommendation
 import config
 
 logger = logging.getLogger(__name__)
@@ -102,3 +103,9 @@ async def save_crisis_event(session_id: str, crisis_type: str):
             logger.info(f"Saved crisis event: session={session_id}, type={crisis_type}")
     except Exception as e:
         logger.error(f"Failed to save crisis event: {e}")
+
+
+async def get_db_session():
+    """Get database session context manager"""
+    async with async_session_factory() as session:
+        yield session

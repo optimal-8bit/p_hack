@@ -139,7 +139,8 @@ export const chatService = {
             textEmotion: data.emotion.emotion,
             facialEmotion: data.emotion.facial_emotion,
             congruence: data.emotion.emotion_congruence
-          } : null
+          } : null,
+          doctorRecommendation: data.doctor_recommendation || null
         }
       })
 

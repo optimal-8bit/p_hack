@@ -10,7 +10,8 @@ from api.schemas import (
     SessionHistoryItem,
     HealthResponse,
     LanguageInfo,
-    SupportedLanguagesResponse
+    SupportedLanguagesResponse,
+    DoctorRecommendationInfo
 )
 from pipeline.orchestrator import get_orchestrator
 from pipeline.context_tracker import get_context_tracker
@@ -18,6 +19,7 @@ from models.emotion_classifier import get_emotion_model
 from models.intent_classifier import get_intent_model
 from models.emotion_fusion import fuse_emotions
 from database.db import get_session_history, save_chat_turn, save_crisis_event
+from services.doctor_recommendation_service import get_recommendation_service
 import config
 
 logger = logging.getLogger(__name__)
@@ -113,6 +115,84 @@ async def chat(request: ChatRequest):
             emotion_score.facial_emotion = fusion_result["facial_emotion"]
             emotion_score.facial_confidence = fusion_result["facial_confidence"]
         
+        # Check if doctor recommendation should be generated
+        recommendation_service = get_recommendation_service()
+        doctor_recommendation = None
+        
+        # Get full conversation history for analysis
+        context = get_context_tracker().get_context(response.session_id)
+        
+        # Build messages list from context + current message
+        messages = []
+        emotions = []
+        intents = []
+        
+        # Add historical context
+        for turn in context:
+            messages.append({"content": turn.user_text})
+            emotions.append(turn.emotion)
+            intents.append(turn.intent)
+        
+        # Add current message
+        messages.append({"content": request.message})
+        emotions.append(response.emotion)
+        intents.append(response.intent)
+        
+        logger.info(
+            f"🔍 [DOCTOR-REC] Analyzing conversation: "
+            f"turn={response.turn_number}, messages={len(messages)}, "
+            f"emotions={emotions[-3:]}, is_crisis={response.is_crisis}"
+        )
+        
+        # Analyze conversation
+        recommendation_data = recommendation_service.analyze_conversation(
+            session_id=response.session_id,
+            messages=messages,
+            emotions=emotions,
+            intents=intents,
+            is_crisis=response.is_crisis
+        )
+        
+        if recommendation_data:
+            logger.info(
+                f"✅ [DOCTOR-REC] Recommendation generated: "
+                f"specialization={recommendation_data.get('recommended_specialization')}, "
+                f"urgency={recommendation_data.get('urgency')}, "
+                f"symptoms={len(recommendation_data.get('symptoms', []))}"
+            )
+            
+            # Save recommendation to database
+            asyncio.create_task(
+                recommendation_service.save_recommendation(recommendation_data)
+            )
+            
+            # Include in response if appropriate
+            if recommendation_service.should_show_recommendation(
+                response.turn_number,
+                has_existing_recommendation=False  # TODO: Check database
+            ):
+                doctor_recommendation = DoctorRecommendationInfo(
+                    should_recommend=True,
+                    specialization=recommendation_data.get("recommended_specialization"),
+                    reason=recommendation_data.get("reason"),
+                    urgency=recommendation_data.get("urgency")
+                )
+                logger.info(
+                    f"🏥 [DOCTOR-REC] Showing recommendation to user: "
+                    f"{recommendation_data.get('recommended_specialization')} "
+                    f"(urgency: {recommendation_data.get('urgency')})"
+                )
+            else:
+                logger.info(
+                    f"⏭️ [DOCTOR-REC] Recommendation generated but not shown yet "
+                    f"(turn {response.turn_number})"
+                )
+        else:
+            logger.info(
+                f"ℹ️ [DOCTOR-REC] No recommendation needed yet "
+                f"(turn {response.turn_number}, symptoms below threshold)"
+            )
+        
         return ChatResponseSchema(
             response_text=response.response_text,
             detected_language=response.detected_language,
@@ -124,7 +204,8 @@ async def chat(request: ChatRequest):
             turn_number=response.turn_number,
             is_crisis=response.is_crisis,
             processing_time_ms=response.processing_time_ms,
-            session_id=response.session_id
+            session_id=response.session_id,
+            doctor_recommendation=doctor_recommendation
         )
         
     except Exception as e:
@@ -235,3 +316,42 @@ async def get_supported_languages():
             for code in config.SUPPORTED_LANGUAGES
         ]
     )
+
+
+@router.get("/api/test-recommendation")
+async def test_recommendation():
+    """Test endpoint to verify doctor recommendation system is working"""
+    try:
+        from services.doctor_recommendation_service import get_recommendation_service
+        
+        service = get_recommendation_service()
+        
+        # Test with anxiety symptoms
+        test_messages = [
+            {"content": "I've been feeling really anxious lately"},
+            {"content": "I can't sleep and I'm worried all the time"}
+        ]
+        
+        recommendation = service.analyze_conversation(
+            session_id="test-session",
+            messages=test_messages,
+            emotions=["anxiety", "fear"],
+            intents=["anxiety and panic"],
+            is_crisis=False
+        )
+        
+        return {
+            "status": "working",
+            "recommendation_generated": recommendation is not None,
+            "recommendation": recommendation,
+            "threshold": service.recommendation_threshold,
+            "message": "Doctor recommendation system is operational"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error testing recommendation: {e}", exc_info=True)
+        return {
+            "status": "error",
+            "error": str(e),
+            "message": "Doctor recommendation system encountered an error"
+        }

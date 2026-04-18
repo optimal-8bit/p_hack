@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 from api.routes import router
 from voice.voice_routes import voice_router
+from api.doctor_routes import router as doctor_router
 from database.db import create_tables
 from models.emotion_classifier import get_emotion_model
 from models.intent_classifier import get_intent_model
@@ -44,6 +45,7 @@ app.add_middleware(
 # Include API routes
 app.include_router(router)
 app.include_router(voice_router)
+app.include_router(doctor_router)
 
 
 @app.on_event("startup")

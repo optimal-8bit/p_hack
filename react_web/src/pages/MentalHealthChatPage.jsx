@@ -142,7 +142,8 @@ export default function MentalHealthChatPage() {
                     ...msg, 
                     streaming: false,
                     isCrisis: result?.metadata?.isCrisis || false,
-                    emotionAnalysis: result?.metadata?.emotionAnalysis // Include emotion analysis
+                    emotionAnalysis: result?.metadata?.emotionAnalysis,
+                    doctorRecommendation: result?.metadata?.doctorRecommendation
                   } 
                 : msg
             )
@@ -318,6 +319,8 @@ export default function MentalHealthChatPage() {
                     voiceAnalysis={message.voiceAnalysis}
                     emotionAnalysis={message.emotionAnalysis}
                     facialEmotion={message.facialEmotion}
+                    doctorRecommendation={message.doctorRecommendation}
+                    sessionId={sessionId}
                   />
                 ))}
                 {isTyping && <TypingIndicator />}

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import EmergencyBubble from './EmergencyBubble'
+import DoctorRecommendation from './DoctorRecommendation'
 
-export default function MessageBubble({ role, content, streaming, error, isCrisis, voiceAnalysis, emotionAnalysis, facialEmotion }) {
+export default function MessageBubble({ role, content, streaming, error, isCrisis, voiceAnalysis, emotionAnalysis, facialEmotion, doctorRecommendation, sessionId }) {
   const [displayedContent, setDisplayedContent] = useState('')
 
   useEffect(() => {
@@ -118,6 +119,14 @@ export default function MessageBubble({ role, content, streaming, error, isCrisi
           </div>
         )}
       </div>
+      
+      {/* Doctor Recommendation - Show after bot message */}
+      {role === 'bot' && !streaming && doctorRecommendation && (
+        <DoctorRecommendation 
+          recommendation={doctorRecommendation} 
+          sessionId={sessionId}
+        />
+      )}
     </div>
   )
 }
@@ -147,6 +156,13 @@ MessageBubble.propTypes = {
     confidence: PropTypes.number,
     all_emotions: PropTypes.object,
   }),
+  doctorRecommendation: PropTypes.shape({
+    should_recommend: PropTypes.bool,
+    specialization: PropTypes.string,
+    reason: PropTypes.string,
+    urgency: PropTypes.string,
+  }),
+  sessionId: PropTypes.string,
 }
 
 MessageBubble.defaultProps = {
@@ -156,4 +172,6 @@ MessageBubble.defaultProps = {
   voiceAnalysis: null,
   emotionAnalysis: null,
   facialEmotion: null,
+  doctorRecommendation: null,
+  sessionId: null,
 }

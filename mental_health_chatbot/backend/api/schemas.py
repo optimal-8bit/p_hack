@@ -42,6 +42,7 @@ class ChatResponseSchema(BaseModel):
     is_crisis: bool
     processing_time_ms: float
     session_id: str
+    doctor_recommendation: Optional[DoctorRecommendationInfo] = None
 
 
 class SessionHistoryItem(BaseModel):
@@ -71,6 +72,14 @@ class LanguageInfo(BaseModel):
 
 class SupportedLanguagesResponse(BaseModel):
     languages: List[LanguageInfo]
+
+
+class DoctorRecommendationInfo(BaseModel):
+    """Doctor recommendation info to include in chat response"""
+    should_recommend: bool
+    specialization: Optional[str] = None
+    reason: Optional[str] = None
+    urgency: Optional[str] = None
 
 
 # Voice pipeline schemas
