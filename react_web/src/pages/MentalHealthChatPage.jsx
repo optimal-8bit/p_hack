@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/chat/Sidebar'
 import ChatContainer from '../components/chat/ChatContainer'
 import MessageBubble from '../components/chat/MessageBubble'
@@ -24,6 +25,7 @@ export default function MentalHealthChatPage() {
   const [keepVideoPlaying, setKeepVideoPlaying] = useState(false) // Keep video after first response
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null)
+  const navigate = useNavigate()
 
   const hasMessages = messages.length > 0
 
@@ -192,6 +194,11 @@ export default function MentalHealthChatPage() {
         />
 
         <div className="chat-main-area">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem 1rem' }}>
+            <button onClick={() => navigate('/medicine-reminder')}>
+              Medicine Reminder
+            </button>
+          </div>
           <ChatContainer hasMessages={hasMessages}>
             {!hasMessages ? (
               <div className="welcome-screen">
