@@ -149,6 +149,13 @@ export default function VoicePipelineInput({ onVoiceResult, onClose, sessionId }
   }
 
   const handleStop = () => {
+    // Clear timer immediately
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    
+    // Stop recording
     stopRecording()
   }
 

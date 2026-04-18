@@ -319,6 +319,25 @@
   width: 100%;
   padding: 0 1rem;
   position: relative;
+  overflow-y: auto; /* Move scrollbar here */
+}
+
+.chat-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-container::-webkit-scrollbar-track {
+  background: rgba(42, 42, 42, 0.3);
+  border-radius: 4px;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+  background: rgba(68, 68, 68, 0.6);
+  border-radius: 4px;
+}
+
+.chat-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(85, 85, 85, 0.8);
 }
 
 .chat-container.empty {
@@ -363,28 +382,10 @@
 /* Messages Container */
 .messages-container {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: visible; /* Remove scroll from here */
   padding: 2rem 0;
   padding-bottom: 120px;
-  scroll-behavior: smooth;
   max-width: 100%;
-}
-
-.messages-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.messages-container::-webkit-scrollbar-track {
-  background: #2a2a2a;
-}
-
-.messages-container::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 4px;
-}
-
-.messages-container::-webkit-scrollbar-thumb:hover {
-  background: #555;
 }
 
 /* ========== MESSAGE BUBBLES (GEMINI STYLE) ========== */
