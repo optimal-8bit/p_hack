@@ -2,12 +2,14 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import ProtectedRoute from '../components/ProtectedRoute'
 import DashboardPage from '../pages/DashboardPage'
+import IntroPage from '../pages/intro/IntroPage'
 import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
 
 export default function AppRouter() {
   return (
     <Routes>
+      <Route path="/" element={<IntroPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route
@@ -18,7 +20,7 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
