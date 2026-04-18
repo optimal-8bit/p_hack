@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import { Plus, Mic, X, FileText, Film, Music, FileSpreadsheet, Presentation, Archive, File } from 'lucide-react'
+import { Plus, Mic, X, FileText, Film, Music, FileSpreadsheet, Presentation, Archive, File, Pill } from 'lucide-react'
 import UploadMenu from './UploadMenu'
 import AudioRecorder from './AudioRecorder'
 import VoiceInput from './VoiceInput'
+import PrescriptionModal from './PrescriptionModal'
 import Toast from '../Toast'
 import { getFileInfo } from '../../utils/fileTypeDetector'
 import './VoiceInput.css'
@@ -20,11 +21,12 @@ const getFileIcon = (fileType) => {
   return File
 }
 
-export default function ChatInput({ onSend, disabled, hasMessages }) {
+export default function ChatInput({ onSend, disabled, hasMessages, sessionId }) {
   const [input, setInput] = useState('')
   const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isVoiceInput, setIsVoiceInput] = useState(false)
+  const [isPrescriptionModalOpen, setIsPrescriptionModalOpen] = useState(false)
   const [toastFileInfo, setToastFileInfo] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
   const [filePreviewUrl, setFilePreviewUrl] = useState(null)
@@ -166,6 +168,17 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
       {/* Toast Notification */}
       {toastFileInfo && <Toast fileInfo={toastFileInfo} onClose={handleCloseToast} />}
 
+      {/* Prescription Modal */}
+      <PrescriptionModal
+        isOpen={isPrescriptionModalOpen}
+        onClose={() => setIsPrescriptionModalOpen(false)}
+        sessionId={sessionId || 'default-session'}
+        onScheduleCreated={() => {
+          // Show success message
+          onSend('✓ Prescription schedule created successfully!')
+        }}
+      />
+
       <div className={`chat-input-wrapper ${hasMessages ? 'with-messages' : 'centered'}`}>
         <form onSubmit={handleSubmit} className="chat-input-form">
           {isVoiceInput ? (
@@ -191,6 +204,18 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
                   onFileSelect={handleFileSelect}
                 />
               </div>
+
+              {/* Prescription button */}
+              <button
+                type="button"
+                onClick={() => setIsPrescriptionModalOpen(true)}
+                className="input-icon-button prescription-button"
+                aria-label="Upload prescription"
+                disabled={disabled}
+                title="Upload and analyze prescription"
+              >
+                <Pill size={20} />
+              </button>
 
               {/* Input area with file thumbnail */}
               <div className="input-content-wrapper">
@@ -301,8 +326,10 @@ ChatInput.propTypes = {
   onSend: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
   hasMessages: PropTypes.bool.isRequired,
+  sessionId: PropTypes.string,
 }
 
 ChatInput.defaultProps = {
   disabled: false,
+  sessionId: 'default-session',
 }

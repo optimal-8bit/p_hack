@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 from api.routes import router
+from api.prescription_routes import router as prescription_router
 from database.db import create_tables
 from models.emotion_classifier import get_emotion_model
 from models.intent_classifier import get_intent_model
@@ -40,6 +41,7 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(router)
+app.include_router(prescription_router)
 
 
 @app.on_event("startup")

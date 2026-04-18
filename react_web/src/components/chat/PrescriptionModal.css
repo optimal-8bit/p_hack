@@ -1,0 +1,353 @@
+.prescription-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.prescription-modal {
+  background: rgba(10, 30, 20, 0.95);
+  border: 1px solid rgba(145, 241, 234, 0.3);
+  border-radius: 20px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.prescription-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(145, 241, 234, 0.2);
+}
+
+.prescription-modal-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #91f1ea;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: rgba(145, 241, 234, 0.7);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.close-button:hover {
+  background: rgba(145, 241, 234, 0.1);
+  color: #91f1ea;
+}
+
+.prescription-modal-content {
+  padding: 1.5rem;
+}
+
+.error-message {
+  margin: 1rem 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: 8px;
+  color: #ff3b30;
+  font-size: 0.875rem;
+}
+
+/* Upload Section */
+.upload-section {
+  margin-bottom: 1.5rem;
+}
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  border: 2px dashed rgba(145, 241, 234, 0.3);
+  border-radius: 12px;
+  background: rgba(39, 241, 57, 0.05);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.upload-area:hover {
+  border-color: rgba(145, 241, 234, 0.5);
+  background: rgba(39, 241, 57, 0.1);
+}
+
+.upload-area svg {
+  color: #91f1ea;
+  margin-bottom: 1rem;
+}
+
+.upload-area p {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #91f1ea;
+}
+
+.upload-area span {
+  font-size: 0.875rem;
+  color: rgba(145, 241, 234, 0.6);
+}
+
+.preview-section {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.preview-section img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+}
+
+.remove-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 59, 48, 0.9);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.remove-button:hover {
+  background: rgba(255, 59, 48, 1);
+}
+
+/* Analysis Section */
+.analysis-section {
+  margin-bottom: 1.5rem;
+}
+
+.analysis-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #91f1ea;
+}
+
+.medicine-card {
+  background: rgba(39, 241, 57, 0.08);
+  border: 1px solid rgba(39, 241, 57, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.medicine-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.medicine-header h4 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #91f1ea;
+}
+
+.dosage-badge {
+  padding: 0.25rem 0.75rem;
+  background: rgba(145, 241, 234, 0.2);
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #91f1ea;
+}
+
+.medicine-instructions {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  color: rgba(145, 241, 234, 0.8);
+  line-height: 1.5;
+}
+
+.timing-section {
+  margin-top: 1rem;
+}
+
+.timing-section label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(145, 241, 234, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.timing-input-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.timing-input {
+  flex: 1;
+  padding: 0.75rem;
+  background: rgba(10, 30, 20, 0.8);
+  border: 1px solid rgba(145, 241, 234, 0.3);
+  border-radius: 8px;
+  color: #91f1ea;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.timing-input:focus {
+  outline: none;
+  border-color: rgba(145, 241, 234, 0.5);
+}
+
+.remove-timing-button {
+  padding: 0.75rem;
+  background: rgba(255, 59, 48, 0.2);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: 8px;
+  color: #ff3b30;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.remove-timing-button:hover {
+  background: rgba(255, 59, 48, 0.3);
+}
+
+.add-timing-button {
+  width: 100%;
+  padding: 0.75rem;
+  background: rgba(39, 241, 57, 0.1);
+  border: 1px dashed rgba(145, 241, 234, 0.3);
+  border-radius: 8px;
+  color: #91f1ea;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-timing-button:hover {
+  background: rgba(39, 241, 57, 0.15);
+  border-color: rgba(145, 241, 234, 0.5);
+}
+
+/* Buttons */
+.primary-button {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(39, 241, 57, 0.2);
+  border: 1px solid rgba(145, 241, 234, 0.4);
+  border-radius: 12px;
+  color: #91f1ea;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: rgba(39, 241, 57, 0.3);
+  transform: translateY(-2px);
+}
+
+.primary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  padding: 1rem;
+  background: rgba(10, 30, 20, 0.8);
+  border: 1px solid rgba(145, 241, 234, 0.3);
+  border-radius: 12px;
+  color: rgba(145, 241, 234, 0.8);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.secondary-button:hover {
+  background: rgba(10, 30, 20, 1);
+  border-color: rgba(145, 241, 234, 0.5);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.modal-actions .secondary-button {
+  flex: 1;
+}
+
+.modal-actions .primary-button {
+  flex: 2;
+}
+
+/* Success Section */
+.success-section {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.success-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  background: rgba(39, 241, 57, 0.2);
+  border: 2px solid rgba(145, 241, 234, 0.4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: #91f1ea;
+}
+
+.success-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #91f1ea;
+}
+
+.success-section p {
+  margin: 0 0 2rem;
+  font-size: 1rem;
+  color: rgba(145, 241, 234, 0.8);
+  line-height: 1.6;
+}

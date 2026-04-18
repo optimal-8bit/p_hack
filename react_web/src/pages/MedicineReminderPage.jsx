@@ -1,40 +1,115 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Aurora from '../components/ui/Aurora';
 import BorderGlow from '../components/ui/BorderGlow';
 import ElasticSlider from '../components/ui/ElasticSlider';
 import SplitText from '../components/ui/SplitText';
 
-// Sample medicine data with dosesPerDay and dosesTaken
-const MEDICINES = [
-  { id: 1, name: 'Aspirin', dosage: '100mg', time: '8:00 AM', dosesPerDay: 3, dosesTaken: 2 },
-  { id: 2, name: 'Vitamin D', dosage: '1000 IU', time: '12:00 PM', dosesPerDay: 2, dosesTaken: 2 },
-  { id: 3, name: 'Metformin', dosage: '500mg', time: '2:00 PM', dosesPerDay: 4, dosesTaken: 1 },
-  { id: 4, name: 'Lisinopril', dosage: '10mg', time: '8:00 PM', dosesPerDay: 1, dosesTaken: 0 },
-];
-
 export default function MedicineReminderPage() {
   const navigate = useNavigate();
-  const [medicines, setMedicines] = useState(MEDICINES);
+  const [medicines, setMedicines] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // Get session ID from localStorage or use default
+  const sessionId = localStorage.getItem('sessionId') || 'default-session';
 
-  const incrementDose = (id) => {
-    setMedicines(prev =>
-      prev.map(med => 
-        med.id === id && med.dosesTaken < med.dosesPerDay
-          ? { ...med, dosesTaken: med.dosesTaken + 1 }
-          : med
-      )
-    );
+  useEffect(() => {
+    fetchReminders();
+  }, []);
+
+  const fetchReminders = async () => {
+    try {
+      setLoading(true);
+      console.log('Fetching reminders for session:', sessionId);
+      
+      const response = await fetch(`http://localhost:8000/api/prescription/reminders/${sessionId}`);
+      
+      console.log('Reminders response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch reminders');
+      }
+      
+      const data = await response.json();
+      console.log('Fetched reminders:', data);
+      
+      setMedicines(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching reminders:', err);
+      setError(err.message);
+      // Use mock data as fallback
+      console.log('Using mock data as fallback');
+      setMedicines([
+        { id: '1', medicine_name: 'Aspirin', dosage: '100mg', time: '08:00', doses_per_day: 3, doses_taken: 2, instructions: 'Take after meals' },
+        { id: '2', medicine_name: 'Vitamin D', dosage: '1000 IU', time: '12:00', doses_per_day: 2, doses_taken: 2, instructions: 'Take in morning' },
+        { id: '3', medicine_name: 'Metformin', dosage: '500mg', time: '14:00', doses_per_day: 4, doses_taken: 1, instructions: 'Take before meals' },
+        { id: '4', medicine_name: 'Lisinopril', dosage: '10mg', time: '20:00', doses_per_day: 1, doses_taken: 0, instructions: 'Take at bedtime' },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const decrementDose = (id) => {
-    setMedicines(prev =>
-      prev.map(med => 
-        med.id === id && med.dosesTaken > 0
-          ? { ...med, dosesTaken: med.dosesTaken - 1 }
-          : med
-      )
-    );
+  const incrementDose = async (id) => {
+    const medicine = medicines.find(m => m.id === id);
+    if (!medicine || medicine.doses_taken >= medicine.doses_per_day) return;
+
+    const newDosesTaken = medicine.doses_taken + 1;
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/prescription/reminders/dose', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reminder_id: id,
+          doses_taken: newDosesTaken,
+        }),
+      });
+
+      if (response.ok) {
+        setMedicines(prev =>
+          prev.map(med => 
+            med.id === id ? { ...med, doses_taken: newDosesTaken } : med
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Error updating dose:', err);
+    }
+  };
+
+  const decrementDose = async (id) => {
+    const medicine = medicines.find(m => m.id === id);
+    if (!medicine || medicine.doses_taken <= 0) return;
+
+    const newDosesTaken = medicine.doses_taken - 1;
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/prescription/reminders/dose', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reminder_id: id,
+          doses_taken: newDosesTaken,
+        }),
+      });
+
+      if (response.ok) {
+        setMedicines(prev =>
+          prev.map(med => 
+            med.id === id ? { ...med, doses_taken: newDosesTaken } : med
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Error updating dose:', err);
+    }
   };
 
   return (
@@ -132,8 +207,49 @@ export default function MedicineReminderPage() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
           gap: '1.5rem',
         }}>
-          {medicines.map((medicine) => {
-            const progressPercentage = (medicine.dosesTaken / medicine.dosesPerDay) * 100;
+          {loading ? (
+            <div style={{ 
+              gridColumn: '1 / -1', 
+              textAlign: 'center', 
+              padding: '3rem',
+              color: 'rgba(145,241,234,0.7)',
+              fontSize: 18,
+            }}>
+              Loading reminders...
+            </div>
+          ) : medicines.length === 0 ? (
+            <div style={{ 
+              gridColumn: '1 / -1', 
+              textAlign: 'center', 
+              padding: '3rem',
+            }}>
+              <p style={{
+                color: 'rgba(145,241,234,0.7)',
+                fontSize: 18,
+                marginBottom: '1rem',
+              }}>
+                No medicine reminders yet
+              </p>
+              <button
+                onClick={() => navigate('/chat')}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'rgba(39, 241, 57, 0.2)',
+                  border: '1px solid rgba(145,241,234,0.4)',
+                  borderRadius: 12,
+                  color: '#91f1ea',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Upload Prescription in Chat
+              </button>
+            </div>
+          ) : (
+            medicines.map((medicine) => {
+              const progressPercentage = (medicine.doses_taken / medicine.doses_per_day) * 100;
             
             return (
               <BorderGlow
@@ -166,7 +282,7 @@ export default function MedicineReminderPage() {
                         textShadow: '0 2px 8px rgba(0,0,0,0.5), 0 0 20px rgba(145,241,234,0.3)',
                         letterSpacing: '-0.01em',
                       }}>
-                        {medicine.name}
+                        {medicine.medicine_name}
                       </h3>
                       <p style={{
                         fontSize: 14,
@@ -225,7 +341,7 @@ export default function MedicineReminderPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <button
                         onClick={() => decrementDose(medicine.id)}
-                        disabled={medicine.dosesTaken === 0}
+                        disabled={medicine.doses_taken === 0}
                         style={{
                           width: 32,
                           height: 32,
@@ -235,8 +351,8 @@ export default function MedicineReminderPage() {
                           color: '#91f1ea',
                           fontSize: 20,
                           fontWeight: 700,
-                          cursor: medicine.dosesTaken === 0 ? 'not-allowed' : 'pointer',
-                          opacity: medicine.dosesTaken === 0 ? 0.3 : 1,
+                          cursor: medicine.doses_taken === 0 ? 'not-allowed' : 'pointer',
+                          opacity: medicine.doses_taken === 0 ? 0.3 : 1,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -253,11 +369,11 @@ export default function MedicineReminderPage() {
                         textAlign: 'center',
                         textShadow: '0 2px 8px rgba(0,0,0,0.4)',
                       }}>
-                        {medicine.dosesTaken} / {medicine.dosesPerDay}
+                        {medicine.doses_taken} / {medicine.doses_per_day}
                       </span>
                       <button
                         onClick={() => incrementDose(medicine.id)}
-                        disabled={medicine.dosesTaken === medicine.dosesPerDay}
+                        disabled={medicine.doses_taken === medicine.doses_per_day}
                         style={{
                           width: 32,
                           height: 32,
@@ -267,8 +383,8 @@ export default function MedicineReminderPage() {
                           color: '#91f1ea',
                           fontSize: 20,
                           fontWeight: 700,
-                          cursor: medicine.dosesTaken === medicine.dosesPerDay ? 'not-allowed' : 'pointer',
-                          opacity: medicine.dosesTaken === medicine.dosesPerDay ? 0.3 : 1,
+                          cursor: medicine.doses_taken === medicine.doses_per_day ? 'not-allowed' : 'pointer',
+                          opacity: medicine.doses_taken === medicine.doses_per_day ? 0.3 : 1,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -314,7 +430,8 @@ export default function MedicineReminderPage() {
                 </div>
               </BorderGlow>
             );
-          })}
+          })
+          )}
         </div>
       </div>
     </div>

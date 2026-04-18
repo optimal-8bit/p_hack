@@ -972,3 +972,19 @@
     font-size: 0.6875rem;
   }
 }
+
+
+/* ========== PRESCRIPTION BUTTON ========== */
+
+.prescription-button {
+  color: #a78bfa !important;
+}
+
+.prescription-button:hover:not(:disabled) {
+  background: rgba(167, 139, 250, 0.1) !important;
+  color: #c4b5fd !important;
+}
+
+.prescription-button:active:not(:disabled) {
+  transform: scale(0.95);
+}

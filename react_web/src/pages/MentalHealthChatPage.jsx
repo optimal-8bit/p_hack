@@ -23,6 +23,15 @@ export default function MentalHealthChatPage() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [currentVideo, setCurrentVideo] = useState(null)
   const [keepVideoPlaying, setKeepVideoPlaying] = useState(false) // Keep video after first response
+  const [sessionId, setSessionId] = useState(() => {
+    // Get or create session ID
+    let id = localStorage.getItem('sessionId')
+    if (!id) {
+      id = `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+      localStorage.setItem('sessionId', id)
+    }
+    return id
+  })
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null)
   const navigate = useNavigate()
@@ -235,6 +244,7 @@ export default function MentalHealthChatPage() {
               onSend={handleSendMessage}
               disabled={inputDisabled}
               hasMessages={hasMessages}
+              sessionId={sessionId}
             />
           </ChatContainer>
         </div>

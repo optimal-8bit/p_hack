@@ -62,10 +62,10 @@ DATABASE_URL = f"sqlite+aiosqlite:///{BASE_DIR}/chat_history.db"
 # NOTE: LLM generation is SLOW on CPU (~30+ seconds per response)
 # For CPU-only systems, keep LLM_ENABLED = False and use template fallback
 # For GPU systems, set LLM_ENABLED = True for natural language generation
-LLM_ENABLED = False  # Disabled - using fast template responses for testing
-LLM_TIMEOUT = 20.0  # Timeout for LLM generation in seconds (GPU: 2-3s after warmup, first run: ~15s)
+LLM_ENABLED = True  # Enabled for prescription analysis
+LLM_TIMEOUT = 30.0  # Increased timeout for prescription analysis (GPU: 2-3s, CPU: 20-30s)
 LLM_MODEL_NAME = "microsoft/Phi-3-mini-4k-instruct"
-LLM_MAX_TOKENS = 80  # Reduced for faster generation
+LLM_MAX_TOKENS = 200  # Increased for prescription extraction
 LLM_TEMPERATURE = 0.3
 
 # Server
