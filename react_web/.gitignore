@@ -23,5 +23,3 @@ dist-ssr
 *.sln
 *.sw?
 
-# Ignore doctor folder in components
-src/components/doctor/
