@@ -18,6 +18,7 @@ class TurnRecord:
     response_template_key: str
     turn_number: int
     timestamp: float
+    language: str = "en"  # Track language per turn
 
 
 class ContextTracker:
@@ -56,6 +57,13 @@ class ContextTracker:
         self.last_access[session_id] = time.time()
         return self.turn_counts[session_id] + 1
     
+    def get_last_language(self, session_id: str) -> str:
+        """Get language from last turn"""
+        context = self.get_context(session_id)
+        if context:
+            return context[-1].language
+        return "en"  # Default to English
+    
     def get_dominant_emotion(self, session_id: str) -> Optional[str]:
         """Get most frequent emotion across last N turns"""
         context = self.get_context(session_id)
@@ -71,6 +79,13 @@ class ContextTracker:
         # Return most common
         return max(emotion_counts, key=emotion_counts.get)
     
+    def get_last_intent(self, session_id: str) -> Optional[str]:
+        """Get intent from last turn"""
+        context = self.get_context(session_id)
+        if context:
+            return context[-1].intent
+        return None
+    
     def clear_session(self, session_id: str):
         """Clear session memory"""
         if session_id in self.sessions:
@@ -79,6 +94,11 @@ class ContextTracker:
             del self.turn_counts[session_id]
         if session_id in self.last_access:
             del self.last_access[session_id]
+        
+        # Also clear advanced response builder session data
+        from response_engine.advanced_response_builder import get_advanced_response_builder
+        advanced_builder = get_advanced_response_builder()
+        advanced_builder.clear_session(session_id)
         
         logger.info(f"Cleared session: {session_id}")
     

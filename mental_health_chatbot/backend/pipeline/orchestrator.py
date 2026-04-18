@@ -7,6 +7,7 @@ from typing import Optional
 from pipeline.safety import get_safety_checker
 from pipeline.preprocessor import get_preprocessor
 from pipeline.context_tracker import get_context_tracker, TurnRecord
+from pipeline.message_type import get_message_type_detector
 from models.emotion_classifier import get_emotion_model
 from models.intent_classifier import get_intent_model
 from response_engine.template_selector import get_template_selector
@@ -35,6 +36,7 @@ class ChatOrchestrator:
         self.safety_checker = get_safety_checker()
         self.preprocessor = get_preprocessor()
         self.context_tracker = get_context_tracker()
+        self.message_type_detector = get_message_type_detector()
         self.emotion_model = get_emotion_model()
         self.intent_model = get_intent_model()
         self.template_selector = get_template_selector()
@@ -88,54 +90,103 @@ class ChatOrchestrator:
                     session_id=session_id
                 )
             
-            # Step 2: Preprocess (clean, detect language, translate)
+            # Step 2: Detect message type (before preprocessing)
+            context_available = len(self.context_tracker.get_context(session_id)) > 0
+            message_type_result = self.message_type_detector.detect_message_type(
+                user_message, context_available
+            )
+            logger.info(f"Message type: {message_type_result['type']} (confidence: {message_type_result['confidence']:.2f}) - {message_type_result['reason']}")
+            
+            # Step 3: Preprocess (clean, detect language, translate)
+            # For short replies, use previous language to avoid random switching
+            if message_type_result['type'] == 'short_reply' and context_available:
+                previous_language = self.context_tracker.get_last_language(session_id)
+                logger.debug(f"Short reply detected, using previous language: {previous_language}")
+            
             preprocessed = await self._run_in_executor(
                 self.preprocessor.preprocess, user_message
             )
             logger.debug(f"Preprocessed: lang={preprocessed.language}, translated={preprocessed.was_translated}")
             
-            # Step 3: Emotion classification
-            emotion_result = await self._run_in_executor(
-                self.emotion_model.predict, preprocessed.english_text
-            )
-            logger.debug(f"Emotion: {emotion_result['emotion']} ({emotion_result['confidence']:.2f})")
+            # Step 4: Conditional emotion classification based on message type
+            skip_emotion_classification = self.message_type_detector.should_skip_emotion_classification(message_type_result)
             
-            # Step 4: Intent classification
-            intent_result = await self._run_in_executor(
-                self.intent_model.predict, preprocessed.english_text
-            )
-            logger.debug(f"Intent: {intent_result['intent']} ({intent_result['confidence']:.2f})")
+            if skip_emotion_classification:
+                # Use fallback emotion from context
+                context_emotion = self.context_tracker.get_dominant_emotion(session_id)
+                fallback_emotion = self.message_type_detector.get_fallback_emotion(
+                    message_type_result, context_emotion
+                )
+                emotion_result = {
+                    'emotion': fallback_emotion,
+                    'confidence': 0.5  # Low confidence for fallback
+                }
+                logger.info(f"Skipped emotion classification, using fallback: {fallback_emotion}")
+            else:
+                # Run normal emotion classification
+                emotion_result = await self._run_in_executor(
+                    self.emotion_model.predict, preprocessed.english_text
+                )
+                logger.debug(f"Emotion: {emotion_result['emotion']} ({emotion_result['confidence']:.2f})")
             
-            # Step 5: Get context
+            # Step 5: Conditional intent classification based on message type
+            if message_type_result['type'] == 'contextual' and context_available:
+                # Use previous intent for contextual follow-ups
+                previous_intent = self.context_tracker.get_last_intent(session_id)
+                intent_result = {
+                    'intent': previous_intent if previous_intent else 'general emotional support',
+                    'confidence': 0.6  # Moderate confidence for context-based
+                }
+                logger.info(f"Contextual message, using previous intent: {intent_result['intent']}")
+            elif message_type_result['type'] == 'short_reply':
+                # Use general emotional support for short replies
+                intent_result = {
+                    'intent': 'general emotional support',
+                    'confidence': 0.5
+                }
+                logger.info(f"Short reply, using general emotional support")
+            else:
+                # Run normal intent classification
+                intent_result = await self._run_in_executor(
+                    self.intent_model.predict, preprocessed.english_text
+                )
+                logger.debug(f"Intent: {intent_result['intent']} ({intent_result['confidence']:.2f})")
+            
+            # Step 6: Get context
             turn_number = self.context_tracker.get_turn_number(session_id)
             context = self.context_tracker.get_context(session_id)
             
-            # Step 6: Select response
+            # Step 7: Select response (pass message type for appropriate response generation)
             response_text = await self._run_in_executor(
                 self.template_selector.select,
                 emotion_result['emotion'],
                 intent_result['intent'],
                 turn_number,
                 context,
-                preprocessed.language
+                preprocessed.language,
+                user_message,  # Pass original user text for reflection
+                session_id,  # Pass session ID for personalization
+                emotion_result['confidence'],  # Pass emotion confidence for advanced processing
+                message_type_result  # Pass message type for appropriate response
             )
             
-            # Step 7: Save turn to context
+            # Step 8: Save turn to context
             turn_record = TurnRecord(
                 user_text=preprocessed.cleaned,
                 emotion=emotion_result['emotion'],
                 intent=intent_result['intent'],
                 response_template_key=response_text[:50],  # Use first 50 chars as key
                 turn_number=turn_number,
-                timestamp=time.time()
+                timestamp=time.time(),
+                language=preprocessed.language  # Store language for next turn
             )
             self.context_tracker.add_turn(session_id, turn_record)
             
-            # Step 8: Calculate processing time
+            # Step 9: Calculate processing time
             processing_time = (time.time() - start_time) * 1000
             logger.info(f"Processed message in {processing_time:.0f}ms")
             
-            # Step 9: Save to database (async, non-blocking)
+            # Step 10: Save to database (async, non-blocking)
             from database.db import save_chat_turn
             asyncio.create_task(
                 save_chat_turn(
@@ -150,7 +201,7 @@ class ChatOrchestrator:
                 )
             )
             
-            # Step 10: Return response
+            # Step 11: Return response
             return ChatResponse(
                 response_text=response_text,
                 detected_language=preprocessed.language,

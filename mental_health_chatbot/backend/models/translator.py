@@ -11,22 +11,36 @@ class TranslationManager:
         self.tokenizers = {}
         self.use_onnx = {}  # Track which models use ONNX vs transformers
         
-    def detect_language(self, text: str) -> str:
-        """Detect language of text, return ISO 639-1 code"""
+    def detect_language(self, text: str) -> tuple[str, float]:
+        """Detect language of text, return (ISO 639-1 code, confidence)"""
         try:
             import langdetect
-            detected = langdetect.detect(text)
+            from langdetect.lang_detect_exception import LangDetectException
+            
+            # Get language probabilities
+            try:
+                probabilities = langdetect.detect_langs(text)
+                if probabilities:
+                    detected = probabilities[0].lang
+                    confidence = probabilities[0].prob
+                else:
+                    detected = "en"
+                    confidence = 0.5
+            except LangDetectException:
+                # Fallback for very short text or detection failure
+                detected = "en"
+                confidence = 0.3
             
             # Map to supported languages
             if detected in config.SUPPORTED_LANGUAGES:
-                return detected
+                return detected, confidence
             else:
                 logger.info(f"Detected language '{detected}' not supported, defaulting to 'en'")
-                return "en"
+                return "en", 0.5
                 
         except Exception as e:
             logger.warning(f"Language detection failed: {e}. Defaulting to 'en'")
-            return "en"
+            return "en", 0.3
     
     def translate_to_english(self, text: str, source_lang: str) -> str:
         """Translate text from source_lang to English"""
