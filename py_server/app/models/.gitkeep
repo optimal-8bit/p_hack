@@ -1,0 +1,2 @@
+# Place model.onnx file here for real ONNX inference
+# If model is not present, the system will use fallback simulation mode
