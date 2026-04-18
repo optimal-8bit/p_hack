@@ -6,6 +6,7 @@ import IntroPage from '../pages/intro/IntroPage'
 import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
 import MentalHealthChatPage from '../pages/MentalHealthChatPage'
+import MedicineReminderPage from '../pages/MedicineReminderPage'
 
 export default function AppRouter() {
   return (
@@ -22,6 +23,7 @@ export default function AppRouter() {
         }
       />
       <Route path="/chat" element={<MentalHealthChatPage />} />
+      <Route path="/medicine-reminder" element={<MedicineReminderPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
