@@ -4,6 +4,7 @@ import ChatContainer from '../components/chat/ChatContainer'
 import MessageBubble from '../components/chat/MessageBubble'
 import ChatInput from '../components/chat/ChatInput'
 import TypingIndicator from '../components/chat/TypingIndicator'
+import LightRays from '../components/LightRays'
 import { chatService } from '../services/chatService'
 import '../styles/MentalHealthChat.css'
 
@@ -127,43 +128,67 @@ export default function MentalHealthChatPage() {
 
   return (
     <div className="mental-health-chat-page with-sidebar">
-      <Sidebar
-        activeChat={activeChat}
-        onChatSelect={handleChatSelect}
-        onNewChat={handleNewChat}
-      />
+      {/* Animated Background Layer */}
+      <div className="background-layer">
+        <LightRays
+          raysOrigin="top-center"
+          raysColor="#ffffff"
+          raysSpeed={0.5}
+          lightSpread={1.2}
+          rayLength={3}
+          followMouse={true}
+          mouseInfluence={0.15}
+          noiseAmount={0}
+          distortion={0}
+          pulsating={false}
+          fadeDistance={1.5}
+          saturation={1.0}
+        />
+      </div>
 
-      <div className="chat-main-area">
-        <ChatContainer hasMessages={hasMessages}>
-          {!hasMessages ? (
-            <div className="welcome-screen">
-              <div className="welcome-content">
-                <h1>Mental Health Support</h1>
-                <p>I'm here to listen and support you. How are you feeling today?</p>
+      {/* Overlay for readability */}
+      <div className="background-overlay" />
+
+      {/* Main Content */}
+      <div className="content-layer">
+        <Sidebar
+          activeChat={activeChat}
+          onChatSelect={handleChatSelect}
+          onNewChat={handleNewChat}
+        />
+
+        <div className="chat-main-area">
+          <ChatContainer hasMessages={hasMessages}>
+            {!hasMessages ? (
+              <div className="welcome-screen">
+                <div className="welcome-content">
+                  <h1>Mental Health Support</h1>
+                  <p>I'm here to listen and support you. How are you feeling today?</p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="messages-container">
-              {messages.map((message) => (
-                <MessageBubble
-                  key={message.id}
-                  role={message.role}
-                  content={message.content}
-                  streaming={message.streaming}
-                  error={message.error}
-                />
-              ))}
-              {isTyping && <TypingIndicator />}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
+            ) : (
+              <div className="messages-container">
+                {messages.map((message) => (
+                  <MessageBubble
+                    key={message.id}
+                    role={message.role}
+                    content={message.content}
+                    streaming={message.streaming}
+                    error={message.error}
+                  />
+                ))}
+                {isTyping && <TypingIndicator />}
+                <div ref={messagesEndRef} />
+              </div>
+            )}
 
-          <ChatInput
-            onSend={handleSendMessage}
-            disabled={inputDisabled}
-            hasMessages={hasMessages}
-          />
-        </ChatContainer>
+            <ChatInput
+              onSend={handleSendMessage}
+              disabled={inputDisabled}
+              hasMessages={hasMessages}
+            />
+          </ChatContainer>
+        </div>
       </div>
     </div>
   )
