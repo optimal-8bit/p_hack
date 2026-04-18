@@ -8,9 +8,11 @@ import TypingIndicator from '../components/chat/TypingIndicator'
 import LightRays from '../components/LightRays'
 import VideoBackground from '../components/VideoBackground'
 import WebcamEmotionDetector from '../components/WebcamEmotionDetector'
+import TTSControl from '../components/chat/TTSControl'
 import { CameraIcon } from '../components/CameraIcon'
 import { chatService } from '../services/chatService'
 import { getRandomVideo } from '../utils/videoHelper'
+import { useTextToSpeech } from '../hooks/useTextToSpeech'
 import '../styles/MentalHealthChat.css'
 
 function createMessageId() {
@@ -31,6 +33,9 @@ export default function MentalHealthChatPage() {
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null)
   const navigate = useNavigate()
+
+  // Initialize Text-to-Speech
+  const { speak, cancelSpeech, toggleMute, isSpeaking, isMuted, isSupported } = useTextToSpeech()
 
   // Log webcam state changes
   useEffect(() => {
@@ -72,6 +77,9 @@ export default function MentalHealthChatPage() {
 
   const handleSendMessage = async (userInput) => {
     if (!userInput.trim() || inputDisabled) return
+
+    // Cancel any ongoing speech when user sends a new message
+    cancelSpeech();
 
     console.log('💬 [CHAT] Sending message:', {
       message: userInput.trim(),
@@ -136,8 +144,9 @@ export default function MentalHealthChatPage() {
             congruence: result?.metadata?.emotionCongruence
           });
           
-          setMessages((prev) =>
-            prev.map((msg) =>
+          // First update the message state
+          setMessages((prev) => {
+            const updatedMessages = prev.map((msg) =>
               msg.id === botMessage.id 
                 ? { 
                     ...msg, 
@@ -147,8 +156,42 @@ export default function MentalHealthChatPage() {
                     doctorRecommendation: result?.metadata?.doctorRecommendation
                   } 
                 : msg
-            )
-          )
+            );
+            
+            // Get the updated bot message for TTS
+            const updatedBotMessage = updatedMessages.find(msg => msg.id === botMessage.id);
+            const botResponse = updatedBotMessage?.content;
+            
+            // Speak the bot's response using TTS
+            if (botResponse && botResponse.trim() && isSupported) {
+              const language = result?.metadata?.detected_language || 'en';
+              console.log('🎯 [TTS] Attempting to speak:', {
+                hasText: !!botResponse,
+                text: botResponse.substring(0, 50) + '...',
+                textLength: botResponse.length,
+                language,
+                isSupported,
+                isMuted
+              });
+              
+              // Use setTimeout to ensure state is updated
+              setTimeout(() => {
+                speak(botResponse, language);
+              }, 100);
+            } else {
+              console.log('🔇 [TTS] Not speaking because:', {
+                hasText: !!botResponse,
+                botResponse: botResponse?.substring(0, 50),
+                textLength: botResponse?.length || 0,
+                isSupported,
+                isMuted,
+                updatedBotMessage: !!updatedBotMessage
+              });
+            }
+            
+            return updatedMessages;
+          });
+          
           setIsTyping(false)
           setInputDisabled(false)
         },
@@ -284,6 +327,15 @@ export default function MentalHealthChatPage() {
                 compact={true}
               />
             </div>
+          )}
+
+          {/* TTS Control Button */}
+          {isSupported && (
+            <TTSControl 
+              isMuted={isMuted}
+              onToggle={toggleMute}
+              isSpeaking={isSpeaking}
+            />
           )}
 
           {/* Webcam Toggle Button */}
