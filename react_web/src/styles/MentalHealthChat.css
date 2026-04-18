@@ -528,13 +528,21 @@
 .chat-input-wrapper.centered {
   position: fixed;
   bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 700px;
+  left: 280px;
+  right: 0;
+  transform: none;
+  width: auto;
+  max-width: none;
   background: transparent;
   border: none;
   padding: 0 1rem;
+  display: flex;
+  justify-content: center;
+}
+
+.chat-input-wrapper.centered .chat-input-form {
+  max-width: 700px;
+  width: 100%;
 }
 
 .chat-input-wrapper.with-messages {
@@ -696,6 +704,11 @@
 
   .chat-input-wrapper.centered {
     bottom: 1rem;
+    left: 0;
+    right: 0;
+  }
+  
+  .chat-input-wrapper.centered .chat-input-form {
     max-width: 90%;
   }
 }
