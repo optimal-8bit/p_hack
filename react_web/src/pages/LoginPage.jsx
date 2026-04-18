@@ -57,6 +57,7 @@ export default function LoginPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { token, status, error } = useSelector((state) => state.auth)
+  const user = useSelector((state) => state.auth.user)
 
   const [form, setForm] = useState({ email: '', password: '' })
   const [googleReady, setGoogleReady] = useState(false)
@@ -85,8 +86,18 @@ export default function LoginPage() {
   }, [dispatch])
 
   useEffect(() => {
-    if (token) { dispatch(fetchCurrentUser()); navigate('/dashboard', { replace: true }) }
-  }, [token, dispatch, navigate])
+    console.log('🔍 Login redirect check:', { token, status, user, role: user?.role })
+    if (token && status === 'succeeded') {
+      // Redirect based on role from login response
+      const userRole = user?.role || 'patient'
+      console.log('🚀 Redirecting to:', userRole === 'doctor' ? '/doctor-dashboard' : '/chat')
+      if (userRole === 'doctor') {
+        navigate('/doctor-dashboard', { replace: true })
+      } else {
+        navigate('/chat', { replace: true })
+      }
+    }
+  }, [token, status, user, navigate])
 
   const onChange = (e) => {
     dispatch(clearAuthError())

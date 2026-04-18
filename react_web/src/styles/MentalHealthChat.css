@@ -386,14 +386,18 @@
   padding: 2rem 0;
   padding-bottom: 120px;
   max-width: 100%;
+  display: flex;
+  flex-direction: column; /* Stack messages vertically */
 }
 
 /* ========== MESSAGE BUBBLES (GEMINI STYLE) ========== */
 
 .message-bubble-wrapper {
   display: flex;
+  flex-direction: column; /* Stack message and doctor recommendation vertically */
   margin-bottom: 1rem;
   animation: fadeIn 0.3s ease-in;
+  gap: 0; /* No gap between message and recommendation */
 }
 
 @keyframes fadeIn {
@@ -408,11 +412,18 @@
 }
 
 .message-bubble-wrapper.user {
-  justify-content: flex-end;
+  align-items: flex-end; /* Align to right */
 }
 
 .message-bubble-wrapper.bot {
-  justify-content: flex-start;
+  align-items: flex-start; /* Align to left */
+}
+
+/* Doctor recommendation should take full width */
+.message-bubble-wrapper.bot > div:last-child {
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
 }
 
 .message-bubble {

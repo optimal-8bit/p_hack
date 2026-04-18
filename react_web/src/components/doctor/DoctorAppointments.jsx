@@ -15,8 +15,13 @@ export default function DoctorAppointments() {
 
   const loadAppointments = async () => {
     try {
-      const data = await doctorService.getAppointments();
-      setAppointments(data);
+      // Get current doctor from auth state
+      const authState = JSON.parse(localStorage.getItem('auth') || '{}');
+      const currentUser = authState.user;
+      const doctorId = currentUser?.id || 'doc-001';
+      
+      const data = await doctorService.getAppointments(doctorId);
+      setAppointments(data.appointments || []);
     } catch (err) {
       console.error(handleApiError(err));
     } finally {

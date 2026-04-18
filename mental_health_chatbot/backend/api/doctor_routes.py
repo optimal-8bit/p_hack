@@ -44,21 +44,55 @@ class DoctorProfileSchema(BaseModel):
 async def get_doctor_dashboard(doctor_id: str = "doc-001"):
     """Get doctor dashboard with metrics and appointments"""
     try:
-        # Return mock data for now
+        from datetime import datetime, date
+        
+        # Get all appointments for this doctor
+        doctor_appointments = [
+            apt for apt in appointments_db.values()
+            if apt["doctor_id"] == doctor_id
+        ]
+        
+        # Calculate metrics
+        total_appointments = len(doctor_appointments)
+        pending_appointments = len([a for a in doctor_appointments if a["status"] == "pending"])
+        
+        # Get today's appointments
+        today = date.today().isoformat()
+        todays_appointments = [
+            a for a in doctor_appointments
+            if a["scheduled_at"].startswith(today)
+        ]
+        
+        # Sort appointments by scheduled_at
+        todays_appointments.sort(key=lambda x: x["scheduled_at"])
+        pending_list = [a for a in doctor_appointments if a["status"] == "pending"]
+        pending_list.sort(key=lambda x: x["scheduled_at"])
+        
+        # Generate AI summary
+        if len(todays_appointments) == 0:
+            workload_summary = "You have no appointments scheduled for today. Great time to catch up on paperwork!"
+        elif len(todays_appointments) <= 3:
+            workload_summary = f"Your workload is light today with {len(todays_appointments)} appointment(s) scheduled."
+        else:
+            workload_summary = f"You have a busy day ahead with {len(todays_appointments)} appointments scheduled."
+        
+        recommendations = []
+        if pending_appointments > 0:
+            recommendations.append(f"You have {pending_appointments} pending appointment(s) awaiting confirmation")
+        if len(todays_appointments) > 0:
+            recommendations.append("Review patient histories before today's appointments")
+        
         return DashboardResponse(
             metrics=DashboardMetrics(
-                total_appointments=25,
-                todays_appointments=3,
-                pending_appointments=5,
-                total_prescriptions=12
+                total_appointments=total_appointments,
+                todays_appointments=len(todays_appointments),
+                pending_appointments=pending_appointments,
+                total_prescriptions=0  # TODO: Implement prescriptions
             ),
-            ai_workload_summary="Your workload is light today with 3 appointments scheduled.",
-            ai_recommendations=[
-                "Review pending lab results",
-                "Follow up with yesterday's patients"
-            ],
-            todays_appointments=[],
-            pending_appointments=[]
+            ai_workload_summary=workload_summary,
+            ai_recommendations=recommendations,
+            todays_appointments=todays_appointments[:5],  # Limit to 5
+            pending_appointments=pending_list[:5]  # Limit to 5
         )
         
     except Exception as e:
@@ -125,10 +159,85 @@ async def search_doctors(specialization: Optional[str] = None, name: Optional[st
         raise HTTPException(status_code=500, detail="Failed to search doctors")
 
 
+class AppointmentCreate(BaseModel):
+    doctor_id: str
+    patient_id: Optional[str] = None
+    session_id: Optional[str] = None
+    scheduled_date: str  # ISO date string
+    scheduled_time: str  # HH:MM format
+    reason: str
+    notes: Optional[str] = None
+
+
+class AppointmentResponse(BaseModel):
+    id: str
+    doctor_id: str
+    patient_id: Optional[str]
+    session_id: Optional[str]
+    scheduled_at: str
+    reason: str
+    notes: Optional[str]
+    status: str
+    created_at: str
+
+
+# In-memory appointments storage (replace with database later)
+appointments_db = {}
+
+
+@router.post("/appointments", response_model=AppointmentResponse)
+async def create_appointment(appointment: AppointmentCreate):
+    """Create a new appointment"""
+    try:
+        from datetime import datetime
+        import uuid
+        
+        # Combine date and time
+        scheduled_datetime = f"{appointment.scheduled_date}T{appointment.scheduled_time}:00"
+        
+        # Create appointment
+        appointment_id = str(uuid.uuid4())
+        new_appointment = {
+            "id": appointment_id,
+            "doctor_id": appointment.doctor_id,
+            "patient_id": appointment.patient_id,
+            "session_id": appointment.session_id,
+            "scheduled_at": scheduled_datetime,
+            "reason": appointment.reason,
+            "notes": appointment.notes,
+            "status": "pending",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        
+        appointments_db[appointment_id] = new_appointment
+        
+        logger.info(f"✅ Appointment created: {appointment_id} for doctor {appointment.doctor_id}")
+        
+        return AppointmentResponse(**new_appointment)
+        
+    except Exception as e:
+        logger.error(f"Error creating appointment: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create appointment")
+
+
 @router.get("/appointments")
 async def get_appointments(doctor_id: str = "doc-001"):
     """Get all appointments for a doctor"""
-    return {"appointments": [], "message": "Appointments endpoint working"}
+    try:
+        # Filter appointments by doctor_id
+        doctor_appointments = [
+            apt for apt in appointments_db.values()
+            if apt["doctor_id"] == doctor_id
+        ]
+        
+        # Sort by scheduled_at (most recent first)
+        doctor_appointments.sort(key=lambda x: x["scheduled_at"], reverse=True)
+        
+        return {"appointments": doctor_appointments, "total": len(doctor_appointments)}
+        
+    except Exception as e:
+        logger.error(f"Error fetching appointments: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch appointments")
 
 
 @router.get("/patients")

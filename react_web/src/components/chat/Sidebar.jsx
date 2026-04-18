@@ -3,54 +3,42 @@ import PropTypes from 'prop-types'
 import ChatHistoryItem from './ChatHistoryItem'
 import UserProfileSection from './UserProfileSection'
 import HealthStatus from './HealthStatus'
-import { apiClient } from '../../lib/apiClient'
+import { getAllChats } from '../../services/chatHistoryService'
 
 export default function Sidebar({ activeChat, onChatSelect, onNewChat }) {
   const [chatHistory, setChatHistory] = useState([])
-  const [userProfile, setUserProfile] = useState(null)
+  const [userProfile] = useState({
+    name: 'Vaibhav Kumar',
+    plan: 'Free',
+  })
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(true)
 
-  useEffect(() => {
-    fetchChatHistory()
-    fetchUserProfile()
-  }, [])
-
-  const fetchChatHistory = async () => {
+  // Load chat history from localStorage
+  const loadChatHistory = () => {
     try {
-      const data = await apiClient.get('/chat/history')
-      setChatHistory(data || [])
+      const chats = getAllChats()
+      setChatHistory(chats.map(chat => ({
+        id: chat.sessionId,
+        title: chat.title,
+        updatedAt: chat.updatedAt,
+        messageCount: chat.messageCount
+      })))
     } catch (error) {
-      console.error('Failed to fetch chat history:', error)
-      // Use mock data if API fails
-      setChatHistory([
-        { id: 1, title: 'Test Message' },
-        { id: 2, title: 'Offline AI Healthcare Hackathon' },
-        { id: 3, title: 'Crank Pin vs Gudgeon Pin' },
-        { id: 4, title: 'Diminishing Returns Analysis' },
-        { id: 5, title: 'Competing in Hackathons' },
-        { id: 6, title: 'NASA Space Apps Hybrid' },
-        { id: 7, title: 'Log out Gmail all devices' },
-        { id: 8, title: 'Resume PDF Creation' },
-      ])
+      console.error('Error loading chat history:', error)
+      setChatHistory([])
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchUserProfile = async () => {
-    try {
-      const data = await apiClient.get('/user/profile')
-      setUserProfile(data)
-    } catch (error) {
-      console.error('Failed to fetch user profile:', error)
-      // Use mock data if API fails
-      setUserProfile({
-        name: 'Vaibhav Kumar',
-        plan: 'Free',
-      })
-    }
-  }
+  useEffect(() => {
+    loadChatHistory()
+    
+    // Refresh chat history every 2 seconds to catch new messages
+    const interval = setInterval(loadChatHistory, 2000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <>
@@ -115,7 +103,7 @@ export default function Sidebar({ activeChat, onChatSelect, onNewChat }) {
               {loading ? (
                 <div className="loading-state">Loading...</div>
               ) : chatHistory.length === 0 ? (
-                <div className="empty-state">No chat history</div>
+                <div className="empty-state">No chat history yet</div>
               ) : (
                 chatHistory.map((chat) => (
                   <ChatHistoryItem

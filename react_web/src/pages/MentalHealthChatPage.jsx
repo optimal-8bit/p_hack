@@ -9,6 +9,7 @@ import LightRays from '../components/LightRays'
 import VideoBackground from '../components/VideoBackground'
 import WebcamEmotionDetector from '../components/WebcamEmotionDetector'
 import { chatService } from '../services/chatService'
+import { saveChat, getChatBySessionId } from '../services/chatHistoryService'
 import { getRandomVideo } from '../utils/videoHelper'
 import '../styles/MentalHealthChat.css'
 
@@ -24,12 +25,19 @@ export default function MentalHealthChatPage() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [currentVideo, setCurrentVideo] = useState(null)
   const [keepVideoPlaying, setKeepVideoPlaying] = useState(false)
-  const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`)
+  const [sessionId, setSessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`)
   const [webcamEnabled, setWebcamEnabled] = useState(false)
   const [currentFacialEmotion, setCurrentFacialEmotion] = useState(null)
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null)
   const navigate = useNavigate()
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveChat(sessionId, messages)
+    }
+  }, [messages, sessionId])
 
   // Log webcam state changes
   useEffect(() => {
@@ -55,6 +63,8 @@ export default function MentalHealthChatPage() {
   const handleNewChat = () => {
     setMessages([])
     setActiveChat(null)
+    // Generate new session ID
+    setSessionId(`session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`)
     // Reset video when starting new chat
     setKeepVideoPlaying(false)
     setIsStreaming(false)
@@ -63,10 +73,16 @@ export default function MentalHealthChatPage() {
 
   const handleChatSelect = async (chatId) => {
     setActiveChat(chatId)
-    // TODO: Load chat messages from backend
-    // const chatMessages = await apiClient.get(`/chat/${chatId}/messages`)
-    // setMessages(chatMessages)
-    console.log('Selected chat:', chatId)
+    
+    // Load chat from localStorage
+    const chat = getChatBySessionId(chatId)
+    if (chat) {
+      setMessages(chat.messages)
+      setSessionId(chat.sessionId)
+      console.log('Loaded chat:', chatId, 'with', chat.messages.length, 'messages')
+    } else {
+      console.warn('Chat not found:', chatId)
+    }
   }
 
   const handleSendMessage = async (userInput) => {

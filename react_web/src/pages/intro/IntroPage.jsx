@@ -606,11 +606,11 @@ export default function IntroPage() {
           />
 
           <div className="btn-row">
-            <button className="btn btn-white" onClick={() => navigate('/chat')}>
-              START CHAT
+            <button className="btn btn-white" onClick={() => navigate('/login')}>
+              SIGN IN
             </button>
-            <button className="btn btn-ghost" onClick={() => navigate('/login')}>
-              LOGIN
+            <button className="btn btn-ghost" onClick={() => navigate('/register')}>
+              SIGN UP
             </button>
           </div>
         </div>

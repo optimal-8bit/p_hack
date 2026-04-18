@@ -71,4 +71,14 @@ export const doctorService = {
       throw error;
     }
   },
+
+  bookAppointment: async (appointmentData) => {
+    try {
+      const response = await apiClient.post('/api/doctor/appointments', appointmentData);
+      return response.data;
+    } catch (error) {
+      console.error('Error booking appointment:', error);
+      throw error;
+    }
+  },
 };

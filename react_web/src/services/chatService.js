@@ -204,7 +204,7 @@ export const chatService = {
       
       return await response.json()
     } catch (error) {
-      console.error('Error fetching health:', error)
+      // Silently fail - health check is optional
       throw error
     }
   },

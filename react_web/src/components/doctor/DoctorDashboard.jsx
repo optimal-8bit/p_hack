@@ -16,7 +16,12 @@ export default function DoctorDashboard() {
 
   const loadDashboard = async () => {
     try {
-      const data = await doctorService.getDashboard();
+      // Get current doctor from auth state
+      const authState = JSON.parse(localStorage.getItem('auth') || '{}');
+      const currentUser = authState.user;
+      const doctorId = currentUser?.id || 'doc-001';
+      
+      const data = await doctorService.getDashboard(doctorId);
       setDashboard(data);
     } catch (err) {
       console.error(handleApiError(err));

@@ -56,13 +56,23 @@ export default function RegisterPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { token, status, error } = useSelector((state) => state.auth)
+  const user = useSelector((state) => state.auth.user)
 
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'patient' })
   const [focusedField, setFocusedField] = useState(null)
 
   useEffect(() => {
-    if (token) { dispatch(fetchCurrentUser()); navigate('/dashboard', { replace: true }) }
-  }, [token, dispatch, navigate])
+    if (token && status === 'succeeded') {
+      // Redirect based on role from registration response
+      // The user data should already be in the auth state
+      const userRole = user?.role || 'patient'
+      if (userRole === 'doctor') {
+        navigate('/doctor-dashboard', { replace: true })
+      } else {
+        navigate('/chat', { replace: true })
+      }
+    }
+  }, [token, status, user, navigate])
 
   const onChange = (e) => {
     dispatch(clearAuthError())
@@ -164,6 +174,50 @@ export default function RegisterPage() {
                 onFocus={() => setFocusedField('name')} onBlur={() => setFocusedField(null)}
                 style={fieldStyle('name')}
               />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>I am a*</label>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, role: 'patient' }))}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    borderRadius: 12,
+                    border: form.role === 'patient' ? '2px solid rgba(110,59,252,0.8)' : '1px solid rgba(255,255,255,0.1)',
+                    background: form.role === 'patient' ? 'rgba(110,59,252,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: form.role === 'patient' ? '#fff' : 'rgba(255,255,255,0.7)',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  🧑‍⚕️ Patient
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, role: 'doctor' }))}
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    borderRadius: 12,
+                    border: form.role === 'doctor' ? '2px solid rgba(110,59,252,0.8)' : '1px solid rgba(255,255,255,0.1)',
+                    background: form.role === 'doctor' ? 'rgba(110,59,252,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: form.role === 'doctor' ? '#fff' : 'rgba(255,255,255,0.7)',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  👨‍⚕️ Doctor
+                </button>
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -185,17 +185,22 @@ class DoctorRecommendationService:
     async def save_recommendation(self, recommendation_data: Dict) -> Optional[str]:
         """Save recommendation to database"""
         try:
-            async with get_db_session() as db:
+            from database.db import async_session_factory
+            from sqlalchemy import select
+            
+            async with async_session_factory() as db:
                 # Get recommended doctors
                 specialization = recommendation_data.get("recommended_specialization")
                 
                 recommended_doctors = []
                 if specialization:
-                    doctors = db.query(Doctor).filter(
-                        Doctor.specialization == specialization,
-                        Doctor.is_active == True
-                    ).order_by(Doctor.rating.desc()).limit(3).all()
-                    
+                    result = await db.execute(
+                        select(Doctor).filter(
+                            Doctor.specialization == specialization,
+                            Doctor.is_active == True
+                        ).order_by(Doctor.rating.desc()).limit(3)
+                    )
+                    doctors = result.scalars().all()
                     recommended_doctors = [doc.id for doc in doctors]
                 
                 # Create recommendation
@@ -211,8 +216,8 @@ class DoctorRecommendationService:
                 )
                 
                 db.add(recommendation)
-                db.commit()
-                db.refresh(recommendation)
+                await db.commit()
+                await db.refresh(recommendation)
                 
                 logger.info(
                     f"✅ Saved doctor recommendation for session {recommendation_data['session_id']}: "
