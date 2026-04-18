@@ -21,7 +21,8 @@ export default function MentalHealthChatPage() {
   const [activeChat, setActiveChat] = useState(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const [currentVideo, setCurrentVideo] = useState(null)
-  const [keepVideoPlaying, setKeepVideoPlaying] = useState(false) // Keep video after first response
+  const [keepVideoPlaying, setKeepVideoPlaying] = useState(false)
+  const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`)
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null)
 
@@ -70,18 +71,15 @@ export default function MentalHealthChatPage() {
       content: '',
       timestamp: new Date().toISOString(),
       streaming: true,
-      isCrisis: false, // Will be updated when response arrives
+      isCrisis: false,
     }
 
     setMessages((prev) => [...prev, userMessage, botMessage])
     setInputDisabled(true)
     setIsTyping(true)
     
-    // Turn off LightRays IMMEDIATELY (before video starts) to prevent lag
     setKeepVideoPlaying(true)
     
-    // Start video background when bot starts responding
-    // If video is already playing, keep the same video; otherwise select a new one
     if (!currentVideo) {
       setCurrentVideo(getRandomVideo())
     }
@@ -120,9 +118,6 @@ export default function MentalHealthChatPage() {
           )
           setIsTyping(false)
           setInputDisabled(false)
-          
-          // Video continues playing (keepVideoPlaying already set to true)
-          // Don't stop the video - keep it playing
         },
         onError: (error) => {
           console.error('Chat error:', error)
@@ -136,8 +131,6 @@ export default function MentalHealthChatPage() {
           setIsTyping(false)
           setInputDisabled(false)
           
-          // Keep video playing even on error (if it was already playing)
-          // Only stop if this was the first message
           if (!keepVideoPlaying) {
             setIsStreaming(false)
             setCurrentVideo(null)
@@ -160,6 +153,48 @@ export default function MentalHealthChatPage() {
     } finally {
       abortControllerRef.current = null
     }
+  }
+
+  const handleVoiceResult = (voiceData) => {
+    // Voice pipeline returns full analysis
+    console.log('Voice analysis:', voiceData)
+    
+    // Add user message with voice indicator
+    const userMessage = {
+      id: createMessageId(),
+      role: 'user',
+      content: `🎤 ${voiceData.transcript}`,
+      timestamp: new Date().toISOString(),
+      voiceData: voiceData, // Store voice analysis
+    }
+    
+    // Add bot response from voice pipeline
+    const botMessage = {
+      id: createMessageId(),
+      role: 'bot',
+      content: voiceData.chat_result?.response_text || 'Processing your message...',
+      timestamp: new Date().toISOString(),
+      streaming: false,
+      isCrisis: voiceData.chat_result?.is_crisis || false,
+      voiceAnalysis: {
+        fusedEmotion: voiceData.fused_emotion,
+        fusedConfidence: voiceData.fused_confidence,
+        textEmotion: voiceData.text_only_emotion,
+        audioEmotion: voiceData.audio_focused_emotion,
+        isIncongruent: voiceData.is_incongruent,
+        incongruenceNote: voiceData.incongruence_note,
+        stressedWords: voiceData.stressed_words,
+      }
+    }
+    
+    setMessages((prev) => [...prev, userMessage, botMessage])
+    
+    // Start video if not already playing
+    setKeepVideoPlaying(true)
+    if (!currentVideo) {
+      setCurrentVideo(getRandomVideo())
+    }
+    setIsStreaming(true)
   }
 
   return (
@@ -217,6 +252,7 @@ export default function MentalHealthChatPage() {
                     streaming={message.streaming}
                     error={message.error}
                     isCrisis={message.isCrisis}
+                    voiceAnalysis={message.voiceAnalysis}
                   />
                 ))}
                 {isTyping && <TypingIndicator />}
@@ -228,6 +264,8 @@ export default function MentalHealthChatPage() {
               onSend={handleSendMessage}
               disabled={inputDisabled}
               hasMessages={hasMessages}
+              sessionId={sessionId}
+              onVoiceResult={handleVoiceResult}
             />
           </ChatContainer>
         </div>

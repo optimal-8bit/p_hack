@@ -972,3 +972,77 @@
     font-size: 0.6875rem;
   }
 }
+
+
+/* Voice Analysis Metadata Styles */
+.voice-analysis-metadata {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border-left: 3px solid #8b5cf6;
+  font-size: 0.85rem;
+}
+
+.voice-analysis-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #a78bfa;
+}
+
+.voice-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.voice-analysis-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.voice-analysis-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.voice-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.voice-value {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.voice-incongruence-note {
+  margin-top: 10px;
+  padding: 8px;
+  background: rgba(239, 68, 68, 0.15);
+  border-left: 3px solid #ef4444;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  color: #fca5a5;
+  line-height: 1.4;
+}
+
+.voice-pipeline-button {
+  position: relative;
+}
+
+.voice-pipeline-button::after {
+  content: 'AI';
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  color: white;
+  font-size: 8px;
+  font-weight: bold;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+}

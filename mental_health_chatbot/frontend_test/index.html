@@ -146,6 +146,69 @@
             cursor: not-allowed;
         }
 
+        #micButton {
+            padding: 12px 16px;
+            font-size: 18px;
+            position: relative;
+        }
+
+        #micButton::after {
+            content: 'Voice';
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            color: #aaa;
+            white-space: nowrap;
+        }
+
+        #sendButton::after {
+            content: 'Text';
+            position: absolute;
+            bottom: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            color: #aaa;
+            white-space: nowrap;
+        }
+
+        button {
+            position: relative;
+            padding-bottom: 20px;
+        }
+
+        #micButton.recording {
+            background: #e74c3c;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .voice-indicator {
+            background: #533483;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .voice-indicator.active {
+            display: flex;
+        }
+
+        .voice-indicator .loading {
+            width: 16px;
+            height: 16px;
+            border-width: 2px;
+        }
+
         .sidebar {
             width: 300px;
             background: #16213e;
@@ -224,6 +287,11 @@
 
     <div class="main-container">
         <div class="chat-container">
+            <div class="voice-indicator" id="voiceIndicator">
+                <div class="loading"></div>
+                <span id="voiceStatus">Recording...</span>
+            </div>
+
             <div class="chat-window" id="chatWindow">
                 <div class="message bot">
                     <div class="message-content">
@@ -239,6 +307,7 @@
                     placeholder="Type your message here..."
                     autocomplete="off"
                 >
+                <button id="micButton" title="Record voice message">🎤</button>
                 <button id="sendButton">Send</button>
             </div>
         </div>

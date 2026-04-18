@@ -46,8 +46,21 @@ class ChatOrchestrator:
         
         logger.info("Chat orchestrator initialized")
     
-    async def process_message(self, session_id: str, user_message: str) -> ChatResponse:
-        """Process user message through the full pipeline"""
+    async def process_message(
+        self,
+        session_id: str,
+        user_message: str,
+        override_emotion: Optional[str] = None,
+        override_confidence: Optional[float] = None
+    ) -> ChatResponse:
+        """Process user message through the full pipeline
+        
+        Args:
+            session_id: Session identifier
+            user_message: User's message text
+            override_emotion: Optional emotion to use instead of classification (for voice pipeline)
+            override_confidence: Optional confidence to use with override_emotion
+        """
         start_time = time.time()
         
         try:
@@ -112,25 +125,33 @@ class ChatOrchestrator:
             logger.debug(f"Preprocessed: lang={preprocessed.language}, translated={preprocessed.was_translated}")
             
             # Step 4: Conditional emotion classification based on message type
-            skip_emotion_classification = self.message_type_detector.should_skip_emotion_classification(message_type_result)
-            
-            if skip_emotion_classification:
-                # Use fallback emotion from context
-                context_emotion = self.context_tracker.get_dominant_emotion(session_id)
-                fallback_emotion = self.message_type_detector.get_fallback_emotion(
-                    message_type_result, context_emotion
-                )
+            # Check if emotion is overridden (from voice pipeline)
+            if override_emotion is not None:
                 emotion_result = {
-                    'emotion': fallback_emotion,
-                    'confidence': 0.5  # Low confidence for fallback
+                    'emotion': override_emotion,
+                    'confidence': override_confidence if override_confidence is not None else 0.8
                 }
-                logger.info(f"Skipped emotion classification, using fallback: {fallback_emotion}")
+                logger.info(f"Using override emotion: {override_emotion} ({emotion_result['confidence']:.2f})")
             else:
-                # Run normal emotion classification
-                emotion_result = await self._run_in_executor(
-                    self.emotion_model.predict, preprocessed.english_text
-                )
-                logger.debug(f"Emotion: {emotion_result['emotion']} ({emotion_result['confidence']:.2f})")
+                skip_emotion_classification = self.message_type_detector.should_skip_emotion_classification(message_type_result)
+                
+                if skip_emotion_classification:
+                    # Use fallback emotion from context
+                    context_emotion = self.context_tracker.get_dominant_emotion(session_id)
+                    fallback_emotion = self.message_type_detector.get_fallback_emotion(
+                        message_type_result, context_emotion
+                    )
+                    emotion_result = {
+                        'emotion': fallback_emotion,
+                        'confidence': 0.5  # Low confidence for fallback
+                    }
+                    logger.info(f"Skipped emotion classification, using fallback: {fallback_emotion}")
+                else:
+                    # Run normal emotion classification
+                    emotion_result = await self._run_in_executor(
+                        self.emotion_model.predict, preprocessed.english_text
+                    )
+                    logger.debug(f"Emotion: {emotion_result['emotion']} ({emotion_result['confidence']:.2f})")
             
             # Step 5: Conditional intent classification based on message type
             if message_type_result['type'] == 'contextual' and context_available:

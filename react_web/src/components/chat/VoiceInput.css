@@ -213,3 +213,105 @@
 .voice-transcript-area::-webkit-scrollbar-thumb:hover {
   background: #565869;
 }
+
+
+/* Voice Pipeline Input Styles */
+.voice-pipeline-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-height: 250px;
+}
+
+.voice-pipeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.voice-pipeline-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.voice-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.voice-visualizer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem 0;
+}
+
+.voice-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 80px;
+  width: 100%;
+}
+
+.voice-bar {
+  width: 4px;
+  background: linear-gradient(to top, #6366f1, #8b5cf6);
+  border-radius: 2px;
+  transition: height 0.1s ease;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.voice-timer {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-stop-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 2rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.voice-stop-button:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+.voice-stop-button:active {
+  transform: scale(0.95);
+}
+
+.voice-processing-text {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.95rem;
+}

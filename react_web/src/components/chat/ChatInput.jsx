@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import { Plus, Mic, X, FileText, Film, Music, FileSpreadsheet, Presentation, Archive, File } from 'lucide-react'
+import { Plus, Mic, X, FileText, Film, Music, FileSpreadsheet, Presentation, Archive, File, Waves } from 'lucide-react'
 import UploadMenu from './UploadMenu'
 import AudioRecorder from './AudioRecorder'
 import VoiceInput from './VoiceInput'
+import VoicePipelineInput from './VoicePipelineInput'
 import Toast from '../Toast'
 import { getFileInfo } from '../../utils/fileTypeDetector'
 import './VoiceInput.css'
@@ -20,22 +21,23 @@ const getFileIcon = (fileType) => {
   return File
 }
 
-export default function ChatInput({ onSend, disabled, hasMessages }) {
+export default function ChatInput({ onSend, disabled, hasMessages, sessionId, onVoiceResult }) {
   const [input, setInput] = useState('')
   const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isVoiceInput, setIsVoiceInput] = useState(false)
+  const [isVoicePipeline, setIsVoicePipeline] = useState(false)
   const [toastFileInfo, setToastFileInfo] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
   const [filePreviewUrl, setFilePreviewUrl] = useState(null)
   const textareaRef = useRef(null)
 
   useEffect(() => {
-    if (textareaRef.current && !isRecording && !isVoiceInput) {
+    if (textareaRef.current && !isRecording && !isVoiceInput && !isVoicePipeline) {
       textareaRef.current.style.height = 'auto'
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
     }
-  }, [input, isRecording, isVoiceInput])
+  }, [input, isRecording, isVoiceInput, isVoicePipeline])
 
   // Create preview URL for images
   useEffect(() => {
@@ -140,6 +142,11 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
     setIsUploadMenuOpen(false)
   }
 
+  const handleStartVoicePipeline = () => {
+    setIsVoicePipeline(true)
+    setIsUploadMenuOpen(false)
+  }
+
   const handleVoiceTranscript = (transcript) => {
     setInput(transcript)
     setIsVoiceInput(false)
@@ -149,8 +156,20 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
     }, 100)
   }
 
+  const handleVoicePipelineResult = (voiceData) => {
+    // Pass the full voice result to parent component
+    if (onVoiceResult) {
+      onVoiceResult(voiceData)
+    }
+    setIsVoicePipeline(false)
+  }
+
   const handleCloseVoiceInput = () => {
     setIsVoiceInput(false)
+  }
+
+  const handleCloseVoicePipeline = () => {
+    setIsVoicePipeline(false)
   }
 
   const handleCloseToast = () => {
@@ -168,7 +187,13 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
 
       <div className={`chat-input-wrapper ${hasMessages ? 'with-messages' : 'centered'}`}>
         <form onSubmit={handleSubmit} className="chat-input-form">
-          {isVoiceInput ? (
+          {isVoicePipeline ? (
+            <VoicePipelineInput 
+              onVoiceResult={handleVoicePipelineResult} 
+              onClose={handleCloseVoicePipeline}
+              sessionId={sessionId}
+            />
+          ) : isVoiceInput ? (
             <VoiceInput onTranscript={handleVoiceTranscript} onClose={handleCloseVoiceInput} />
           ) : isRecording ? (
             <AudioRecorder onSendAudio={handleSendAudio} onCancel={handleCancelRecording} />
@@ -247,20 +272,28 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
                 />
               </div>
 
-              {/* Mic button - Long press for recording, click for voice input */}
+              {/* Mic button - Click for voice-to-text */}
               <button
                 type="button"
                 onClick={handleStartVoiceInput}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  handleStartRecording()
-                }}
                 className="input-icon-button"
-                aria-label="Voice input (right-click for audio recording)"
+                aria-label="Voice-to-text"
                 disabled={disabled}
-                title="Click for voice-to-text, right-click for audio recording"
+                title="Voice-to-text (browser speech recognition)"
               >
                 <Mic size={20} />
+              </button>
+
+              {/* Voice Pipeline button - Click for audio analysis */}
+              <button
+                type="button"
+                onClick={handleStartVoicePipeline}
+                className="input-icon-button voice-pipeline-button"
+                aria-label="Voice with emotion analysis"
+                disabled={disabled}
+                title="Voice with emotion analysis (audio + text fusion)"
+              >
+                <Waves size={20} />
               </button>
 
               {/* Send button */}
@@ -289,9 +322,12 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
             </div>
           )}
         </form>
-        {/* {!hasMessages && !isRecording && !isVoiceInput && (
-          <p className="input-hint">Press Enter to send, Shift+Enter for new line</p>
-        )} */}
+        {!hasMessages && !isRecording && !isVoiceInput && !isVoicePipeline && (
+          <p className="input-hint">
+            <Mic size={14} style={{display: 'inline', verticalAlign: 'middle'}} /> Voice-to-text | 
+            <Waves size={14} style={{display: 'inline', verticalAlign: 'middle', marginLeft: '8px'}} /> Voice with emotion analysis
+          </p>
+        )}
       </div>
     </>
   )
@@ -301,8 +337,11 @@ ChatInput.propTypes = {
   onSend: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
   hasMessages: PropTypes.bool.isRequired,
+  sessionId: PropTypes.string.isRequired,
+  onVoiceResult: PropTypes.func,
 }
 
 ChatInput.defaultProps = {
   disabled: false,
+  onVoiceResult: null,
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import EmergencyBubble from './EmergencyBubble'
 
-export default function MessageBubble({ role, content, streaming, error, isCrisis }) {
+export default function MessageBubble({ role, content, streaming, error, isCrisis, voiceAnalysis }) {
   const [displayedContent, setDisplayedContent] = useState('')
 
   useEffect(() => {
@@ -36,6 +36,38 @@ export default function MessageBubble({ role, content, streaming, error, isCrisi
             <span className="cursor">|</span>
           )}
         </div>
+        
+        {/* Voice Analysis Metadata */}
+        {voiceAnalysis && role === 'bot' && !streaming && (
+          <div className="voice-analysis-metadata">
+            <div className="voice-analysis-header">🎤 Voice Analysis</div>
+            <div className="voice-analysis-grid">
+              <div className="voice-analysis-item">
+                <span className="voice-label">Fused Emotion:</span>
+                <span className="voice-value">{voiceAnalysis.fusedEmotion} ({(voiceAnalysis.fusedConfidence * 100).toFixed(0)}%)</span>
+              </div>
+              <div className="voice-analysis-item">
+                <span className="voice-label">Text:</span>
+                <span className="voice-value">{voiceAnalysis.textEmotion}</span>
+              </div>
+              <div className="voice-analysis-item">
+                <span className="voice-label">Audio:</span>
+                <span className="voice-value">{voiceAnalysis.audioEmotion}</span>
+              </div>
+              {voiceAnalysis.stressedWords && voiceAnalysis.stressedWords.length > 0 && (
+                <div className="voice-analysis-item full-width">
+                  <span className="voice-label">Emphasized:</span>
+                  <span className="voice-value">{voiceAnalysis.stressedWords.join(', ')}</span>
+                </div>
+              )}
+            </div>
+            {voiceAnalysis.isIncongruent && voiceAnalysis.incongruenceNote && (
+              <div className="voice-incongruence-note">
+                ⚠️ {voiceAnalysis.incongruenceNote}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -47,10 +79,20 @@ MessageBubble.propTypes = {
   streaming: PropTypes.bool,
   error: PropTypes.bool,
   isCrisis: PropTypes.bool,
+  voiceAnalysis: PropTypes.shape({
+    fusedEmotion: PropTypes.string,
+    fusedConfidence: PropTypes.number,
+    textEmotion: PropTypes.string,
+    audioEmotion: PropTypes.string,
+    isIncongruent: PropTypes.bool,
+    incongruenceNote: PropTypes.string,
+    stressedWords: PropTypes.arrayOf(PropTypes.string),
+  }),
 }
 
 MessageBubble.defaultProps = {
   streaming: false,
   error: false,
   isCrisis: false,
+  voiceAnalysis: null,
 }

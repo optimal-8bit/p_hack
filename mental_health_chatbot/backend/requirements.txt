@@ -37,3 +37,9 @@ google-generativeai==0.3.2
 # Testing
 pytest==8.2.0
 pytest-asyncio==0.23.6
+
+# Voice pipeline dependencies
+openai-whisper>=20231117
+librosa>=0.10.1
+soundfile>=0.12.1
+ffmpeg-python>=0.2.0

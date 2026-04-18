@@ -4,6 +4,9 @@ const API_BASE_URL = 'http://localhost:8000';
 // State
 let sessionId = generateUUID();
 let isProcessing = false;
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Event listeners
     document.getElementById('sendButton').addEventListener('click', sendMessage);
+    document.getElementById('micButton').addEventListener('click', toggleRecording);
     document.getElementById('messageInput').addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !isProcessing) {
             sendMessage();
@@ -262,4 +266,189 @@ async function clearSession() {
         console.error('Error clearing session:', error);
         alert('Failed to clear session: ' + error.message);
     }
+}
+
+
+// Voice recording functions
+async function toggleRecording() {
+    if (isRecording) {
+        stopRecording();
+    } else {
+        await startRecording();
+    }
+}
+
+async function startRecording() {
+    try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // Create media recorder
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = async () => {
+            // Stop all tracks
+            stream.getTracks().forEach(track => track.stop());
+            
+            // Create audio blob
+            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            
+            // Send to voice API
+            await sendVoiceMessage(audioBlob);
+        };
+        
+        // Start recording
+        mediaRecorder.start();
+        isRecording = true;
+        
+        // Update UI
+        const micButton = document.getElementById('micButton');
+        micButton.classList.add('recording');
+        micButton.textContent = '⏹️';
+        micButton.title = 'Stop recording';
+        
+        const voiceIndicator = document.getElementById('voiceIndicator');
+        const voiceStatus = document.getElementById('voiceStatus');
+        voiceIndicator.classList.add('active');
+        voiceStatus.textContent = 'Recording... Click stop when done';
+        
+    } catch (error) {
+        console.error('Error starting recording:', error);
+        alert('Could not access microphone. Please ensure microphone permissions are granted.');
+    }
+}
+
+function stopRecording() {
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        
+        // Update UI
+        const micButton = document.getElementById('micButton');
+        micButton.classList.remove('recording');
+        micButton.textContent = '🎤';
+        micButton.title = 'Record voice message';
+        
+        const voiceIndicator = document.getElementById('voiceIndicator');
+        const voiceStatus = document.getElementById('voiceStatus');
+        voiceStatus.textContent = 'Processing audio...';
+    }
+}
+
+async function sendVoiceMessage(audioBlob) {
+    isProcessing = true;
+    updateSendButton(true);
+    
+    // Show loading indicator
+    const loadingId = addMessage('bot', '<div class="loading"></div> Processing your voice message...', false);
+    
+    try {
+        // Create form data
+        const formData = new FormData();
+        formData.append('session_id', sessionId);
+        formData.append('audio', audioBlob, 'recording.webm');
+        
+        // Send to voice API
+        const response = await fetch(`${API_BASE_URL}/api/voice/chat`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Remove loading indicator
+        removeMessage(loadingId);
+        
+        // Hide voice indicator
+        const voiceIndicator = document.getElementById('voiceIndicator');
+        voiceIndicator.classList.remove('active');
+        
+        // Add transcript as user message
+        if (data.transcript) {
+            addMessage('user', `🎤 ${data.transcript}`);
+        }
+        
+        // Add bot response with voice metadata
+        addVoiceResponse(data);
+        
+    } catch (error) {
+        console.error('Error sending voice message:', error);
+        removeMessage(loadingId);
+        
+        // Hide voice indicator
+        const voiceIndicator = document.getElementById('voiceIndicator');
+        voiceIndicator.classList.remove('active');
+        
+        addMessage('bot', `Error processing voice: ${error.message}. Please try again or type your message.`, false);
+    } finally {
+        isProcessing = false;
+        updateSendButton(false);
+    }
+}
+
+function addVoiceResponse(data) {
+    const chatWindow = document.getElementById('chatWindow');
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message bot';
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    
+    // Add response text from chat_result
+    const textDiv = document.createElement('div');
+    if (data.chat_result && data.chat_result.response_text) {
+        textDiv.textContent = data.chat_result.response_text;
+    } else {
+        textDiv.textContent = 'I heard you. Let me process that...';
+    }
+    contentDiv.appendChild(textDiv);
+    
+    // Add voice metadata
+    const metadataDiv = document.createElement('div');
+    metadataDiv.className = 'metadata';
+    
+    const emotion = `${data.fused_emotion} ${(data.fused_confidence * 100).toFixed(0)}%`;
+    const textEmotion = `text: ${data.text_only_emotion} ${(data.text_only_confidence * 100).toFixed(0)}%`;
+    const audioEmotion = `audio: ${data.audio_focused_emotion} ${(data.audio_focused_confidence * 100).toFixed(0)}%`;
+    const duration = `${data.audio_duration_seconds.toFixed(1)}s`;
+    const time = `${(data.transcription_time_ms + data.fusion_time_ms).toFixed(0)}ms`;
+    
+    metadataDiv.innerHTML = `
+        [🎤 voice] [emotion: ${emotion}] [${textEmotion}] [${audioEmotion}]<br>
+        [duration: ${duration}] [processing: ${time}]
+    `;
+    
+    // Add incongruence note if present
+    if (data.is_incongruent && data.incongruence_note) {
+        const incongruenceDiv = document.createElement('div');
+        incongruenceDiv.style.cssText = 'margin-top: 10px; padding: 8px; background: rgba(231, 76, 60, 0.2); border-radius: 4px; font-size: 12px;';
+        incongruenceDiv.innerHTML = `<strong>⚠️ Note:</strong> ${data.incongruence_note}`;
+        contentDiv.appendChild(incongruenceDiv);
+    }
+    
+    // Add stressed words if present
+    if (data.stressed_words && data.stressed_words.length > 0) {
+        const stressedDiv = document.createElement('div');
+        stressedDiv.style.cssText = 'margin-top: 8px; font-size: 11px; color: #aaa;';
+        stressedDiv.textContent = `Emphasized words: ${data.stressed_words.join(', ')}`;
+        metadataDiv.appendChild(stressedDiv);
+    }
+    
+    contentDiv.appendChild(metadataDiv);
+    messageDiv.appendChild(contentDiv);
+    chatWindow.appendChild(messageDiv);
+    
+    // Scroll to bottom
+    chatWindow.scrollTop = chatWindow.scrollHeight;
 }

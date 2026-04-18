@@ -140,6 +140,15 @@ async def health_check():
             if lang_code != "en":
                 models_loaded[f"translator_{lang_code}"] = True  # Always available via transformers
         
+        # Check voice pipeline
+        try:
+            from voice.transcriber import get_transcriber
+            transcriber = get_transcriber()
+            models_loaded["voice_pipeline_loaded"] = transcriber.is_loaded()
+        except Exception as e:
+            logger.warning(f"Voice pipeline check failed: {e}")
+            models_loaded["voice_pipeline_loaded"] = False
+        
         # Determine overall status
         critical_models = ["emotion_classifier", "intent_classifier"]
         all_critical_loaded = all(models_loaded.get(m, False) for m in critical_models)

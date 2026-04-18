@@ -1,15 +1,18 @@
 import logging
+import subprocess
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 from api.routes import router
+from voice.voice_routes import voice_router
 from database.db import create_tables
 from models.emotion_classifier import get_emotion_model
 from models.intent_classifier import get_intent_model
 from models.translator import get_translation_manager
 from pipeline.orchestrator import get_orchestrator
+from voice.transcriber import get_transcriber
 import config
 
 # Load environment variables from .env file
@@ -40,6 +43,7 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(router)
+app.include_router(voice_router)
 
 
 @app.on_event("startup")
@@ -78,6 +82,39 @@ async def startup_event():
     logger.info("Initializing chat orchestrator...")
     orchestrator = get_orchestrator()
     logger.info("✓ Chat orchestrator initialized")
+    
+    # 6. Check ffmpeg availability
+    logger.info("Checking ffmpeg availability...")
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            logger.info("✓ ffmpeg is available")
+        else:
+            logger.warning(
+                "⚠ ffmpeg not found — only .wav audio will work reliably. "
+                "Install ffmpeg from https://ffmpeg.org/download.html"
+            )
+    except Exception as e:
+        logger.warning(
+            f"⚠ ffmpeg check failed: {e}. "
+            "Only .wav audio will work reliably. "
+            "Install ffmpeg from https://ffmpeg.org/download.html"
+        )
+    
+    # 7. Pre-load Whisper model
+    logger.info("Pre-loading Whisper model...")
+    try:
+        transcriber = get_transcriber()
+        if transcriber.is_loaded():
+            logger.info("✓ Whisper model loaded")
+        else:
+            logger.warning("⚠ Whisper model failed to load — voice features will not work")
+    except Exception as e:
+        logger.warning(f"⚠ Whisper model loading failed: {e}")
     
     logger.info("=" * 60)
     logger.info("Backend startup complete!")
@@ -151,6 +188,12 @@ async def root():
                 <strong>POST /api/chat</strong> - Send a message to the chatbot
             </div>
             <div class="endpoint">
+                <strong>POST /api/voice/chat</strong> - Send voice message with audio-fused emotion detection
+            </div>
+            <div class="endpoint">
+                <strong>GET /api/voice/health</strong> - Check voice pipeline status
+            </div>
+            <div class="endpoint">
                 <strong>GET /api/health</strong> - Check system health and model status
             </div>
             <div class="endpoint">
@@ -167,6 +210,8 @@ async def root():
                 <li>✓ Multilingual support (English, Hindi, French, Spanish)</li>
                 <li>✓ Emotion and intent classification</li>
                 <li>✓ Context-aware responses</li>
+                <li>✓ Voice input with audio-fused emotion detection</li>
+                <li>✓ Emotional incongruence detection</li>
             </ul>
             
             <h2>Test UI</h2>

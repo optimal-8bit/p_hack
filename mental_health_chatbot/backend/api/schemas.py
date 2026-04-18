@@ -56,3 +56,42 @@ class LanguageInfo(BaseModel):
 
 class SupportedLanguagesResponse(BaseModel):
     languages: List[LanguageInfo]
+
+
+# Voice pipeline schemas
+class FusedWordResultSchema(BaseModel):
+    word: str
+    final_weight: float
+    text_weight: float
+    audio_weight: float
+    pitch_normalized: float
+    amplitude_normalized: float
+    is_stressed: bool
+    emotion_hint: str
+
+
+class VoiceChatResponseSchema(BaseModel):
+    transcript: str
+    detected_language: str
+    audio_duration_seconds: float
+    transcription_time_ms: float
+    fusion_time_ms: float
+    
+    text_only_emotion: str
+    text_only_confidence: float
+    audio_focused_emotion: str
+    audio_focused_confidence: float
+    fused_emotion: str
+    fused_confidence: float
+    
+    intent: str
+    intent_confidence: float
+    
+    is_incongruent: bool
+    incongruence_score: float
+    incongruence_note: str
+    
+    word_analysis: List[FusedWordResultSchema]
+    stressed_words: List[str]
+    
+    chat_result: Optional[ChatResponseSchema]  # nest full existing chat response here
