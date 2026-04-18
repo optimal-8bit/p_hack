@@ -1,7 +1,4 @@
-import { getMockResponse, simulateStreaming } from '../mock/mockResponses'
-
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || false
 
 // Generate a session ID (stored in sessionStorage for persistence across page reloads)
 function getSessionId() {
@@ -24,38 +21,6 @@ async function simulateStreamingFromResponse(text, signal, onToken, delay = 20) 
 
 export const chatService = {
   async streamReply({ messages, signal, sessionId, facialEmotion, onToken, onDone, onError }) {
-    // Check if we should use mock responses
-    if (USE_MOCK) {
-      try {
-        // Get the last user message
-        const lastUserMessage = messages[messages.length - 1]?.content || ''
-        
-        // Get mock response
-        const mockResponse = getMockResponse(lastUserMessage)
-        
-        // Simulate streaming with typewriter effect
-        // 300ms initial delay (thinking time), then 20ms per character
-        await simulateStreaming(
-          mockResponse,
-          (char) => {
-            if (signal?.aborted) throw new Error('Aborted')
-            onToken?.(char)
-          },
-          20,   // 20ms delay between characters
-          300   // 300ms initial delay before starting
-        )
-        
-        onDone?.({ done: true })
-        return
-      } catch (error) {
-        if (error.message === 'Aborted') {
-          return
-        }
-        onError?.(error)
-        throw error
-      }
-    }
-
     // Use real Mental Health Chatbot backend API
     try {
       // Get the last user message

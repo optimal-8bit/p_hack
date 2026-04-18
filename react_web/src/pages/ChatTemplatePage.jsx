@@ -1,118 +1,12 @@
-import { useMemo, useRef, useState } from 'react'
-
+import { useMemo, useRef, useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
+import { StopCircle } from 'lucide-react'
 import { chatService } from '../services/chatService'
-import './ChatTemplatePage.css'
+import { ChatBubble } from '../components/ChatBubble'
+import { InputBar } from '../components/InputBar'
 
 function createId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-}
-
-function formatFileSize(size) {
-  if (size < 1024) return `${size} B`
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function escapeHtml(text) {
-  return text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-}
-
-function inlineMarkdown(text) {
-  let output = escapeHtml(text)
-  output = output.replace(/`([^`]+)`/g, '<code>$1</code>')
-  output = output.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-  output = output.replace(/\*([^*]+)\*/g, '<em>$1</em>')
-  output = output.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
-  return output
-}
-
-function markdownToHtml(markdownText) {
-  const lines = markdownText.split('\n')
-  const blocks = []
-  let inCodeBlock = false
-  let codeBuffer = []
-  let listType = null
-
-  const closeList = () => {
-    if (!listType) return
-    blocks.push(`</${listType}>`)
-    listType = null
-  }
-
-  for (const rawLine of lines) {
-    const line = rawLine.trimEnd()
-
-    if (line.startsWith('```')) {
-      if (inCodeBlock) {
-        blocks.push(`<pre><code>${escapeHtml(codeBuffer.join('\n'))}</code></pre>`)
-        codeBuffer = []
-        inCodeBlock = false
-      } else {
-        closeList()
-        inCodeBlock = true
-      }
-      continue
-    }
-
-    if (inCodeBlock) {
-      codeBuffer.push(rawLine)
-      continue
-    }
-
-    if (!line) {
-      closeList()
-      continue
-    }
-
-    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/)
-    if (headingMatch) {
-      closeList()
-      const level = headingMatch[1].length
-      blocks.push(`<h${level}>${inlineMarkdown(headingMatch[2])}</h${level}>`)
-      continue
-    }
-
-    const unorderedMatch = line.match(/^[-*]\s+(.*)$/)
-    if (unorderedMatch) {
-      if (listType !== 'ul') {
-        closeList()
-        listType = 'ul'
-        blocks.push('<ul>')
-      }
-      blocks.push(`<li>${inlineMarkdown(unorderedMatch[1])}</li>`)
-      continue
-    }
-
-    const orderedMatch = line.match(/^\d+\.\s+(.*)$/)
-    if (orderedMatch) {
-      if (listType !== 'ol') {
-        closeList()
-        listType = 'ol'
-        blocks.push('<ol>')
-      }
-      blocks.push(`<li>${inlineMarkdown(orderedMatch[1])}</li>`)
-      continue
-    }
-
-    closeList()
-    blocks.push(`<p>${inlineMarkdown(line)}</p>`)
-  }
-
-  if (inCodeBlock) {
-    blocks.push(`<pre><code>${escapeHtml(codeBuffer.join('\n'))}</code></pre>`)
-  }
-  closeList()
-
-  return blocks.join('')
-}
-
-function MarkdownView({ content }) {
-  return <div className="markdown-body" dangerouslySetInnerHTML={{ __html: markdownToHtml(content || '...') }} />
 }
 
 export default function ChatTemplatePage() {
@@ -142,6 +36,10 @@ export default function ChatTemplatePage() {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     })
   }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
 
   const onSelectFiles = (event) => {
     const selected = Array.from(event.target.files || [])
@@ -199,7 +97,6 @@ export default function ChatTemplatePage() {
 
     setMessages((prev) => [...prev, userMessage, assistantMessage])
     setIsStreaming(true)
-    scrollToBottom()
 
     const signalController = new AbortController()
     abortRef.current = signalController
@@ -216,7 +113,6 @@ export default function ChatTemplatePage() {
         signal: signalController.signal,
         onToken: (token) => {
           appendAssistantToken(assistantMessage.id, token)
-          scrollToBottom()
         },
         onDone: () => {
           setMessages((prev) =>
@@ -235,100 +131,98 @@ export default function ChatTemplatePage() {
       abortRef.current = null
       setIsStreaming(false)
       setMessages((prev) => prev.map((msg) => ({ ...msg, streaming: false })))
-      scrollToBottom()
     }
   }
 
   return (
-    <div className="chat-template-shell">
-      <aside className="chat-sidebar">
-        <h2>Conversations</h2>
-        <p>This is template-only UI. Connect your own conversation persistence later.</p>
-        <button type="button" disabled>
-          + New chat
-        </button>
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
+      {/* Sidebar */}
+      <aside className="hidden lg:flex lg:w-80 flex-col border-r border-gray-200 bg-white/80 backdrop-blur-sm">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Conversations</h2>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            This is template-only UI. Connect your own conversation persistence later.
+          </p>
+        </div>
+        <div className="p-4">
+          <motion.button
+            type="button"
+            disabled
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="w-full py-3 px-4 bg-gray-100 text-gray-400 rounded-xl font-medium cursor-not-allowed"
+          >
+            + New chat
+          </motion.button>
+        </div>
       </aside>
 
-      <section className="chat-main">
-        <header className="chat-header">
+      {/* Main Chat Area */}
+      <section className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
           <div>
-            <h1>AI Chat</h1>
-            <p>Streaming + files + markdown output template.</p>
+            <h1 className="text-2xl font-bold text-gray-900">AI Chat</h1>
+            <p className="text-sm text-gray-600 mt-1">Streaming + files + markdown output template.</p>
           </div>
-          {isStreaming ? (
-            <button type="button" className="stop-btn" onClick={handleStop}>
-              Stop generation
-            </button>
-          ) : null}
+          <AnimatePresence>
+            {isStreaming && (
+              <motion.button
+                type="button"
+                onClick={handleStop}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium shadow-lg transition-colors"
+              >
+                <StopCircle className="w-4 h-4" />
+                Stop
+              </motion.button>
+            )}
+          </AnimatePresence>
         </header>
 
-        <div className="chat-log" role="log" aria-live="polite">
-          {messages.map((message) => (
-            <article key={message.id} className={`chat-bubble ${message.role}`}>
-              <header>
-                <span className="role">{message.role === 'assistant' ? 'Assistant' : 'You'}</span>
-              </header>
-
-              <MarkdownView content={message.content} />
-
-              {message.files?.length ? (
-                <ul className="message-file-list">
-                  {message.files.map((file) => (
-                    <li key={`${message.id}-${file.name}`}>
-                      <span>{file.name}</span>
-                      <small>{formatFileSize(file.size)}</small>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </article>
-          ))}
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4" role="log" aria-live="polite">
+          <AnimatePresence mode="popLayout">
+            {messages.map((message) => (
+              <ChatBubble
+                key={message.id}
+                message={message}
+                isStreaming={message.streaming && !message.content}
+              />
+            ))}
+          </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
 
-        <footer className="chat-compose-area">
-          {files.length ? (
-            <ul className="pending-files">
-              {files.map((file) => (
-                <li key={file.name}>
-                  <div>
-                    <strong>{file.name}</strong>
-                    <small>{formatFileSize(file.size)}</small>
-                  </div>
-                  <button type="button" onClick={() => removeFile(file.name)}>
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+        {/* Error Display */}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="mx-4 mb-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700"
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          <form onSubmit={handleSubmit} className="chat-compose-form">
-            <label htmlFor="chat-file" className="file-input-btn">
-              Attach files
-            </label>
-            <input
-              id="chat-file"
-              type="file"
-              multiple
-              className="file-input"
-              onChange={onSelectFiles}
-            />
-
-            <textarea
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              placeholder="Message the assistant..."
-              rows={1}
-            />
-
-            <button type="submit" disabled={!canSend}>
-              {isStreaming ? 'Streaming...' : 'Send'}
-            </button>
-          </form>
-
-          {error ? <p className="stream-error">{error}</p> : null}
-        </footer>
+        {/* Input Bar */}
+        <InputBar
+          draft={draft}
+          setDraft={setDraft}
+          files={files}
+          onSelectFiles={onSelectFiles}
+          removeFile={removeFile}
+          onSubmit={handleSubmit}
+          canSend={canSend}
+          isStreaming={isStreaming}
+        />
       </section>
     </div>
   )

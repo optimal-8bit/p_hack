@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Stethoscope, AlertCircle, Calendar, X } from 'lucide-react';
 import { doctorService } from '@/services/doctor.service';
+import MorphingLoader from '../MorphingLoader';
 
 export default function DoctorRecommendation({ recommendation, sessionId }) {
   const [doctors, setDoctors] = useState([]);
@@ -169,16 +170,12 @@ export default function DoctorRecommendation({ recommendation, sessionId }) {
           {showDoctors && (
             <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
               {loading ? (
-                <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                  <div style={{
-                    width: 32,
-                    height: 32,
-                    border: '3px solid rgba(255,255,255,0.2)',
-                    borderTop: '3px solid #ffffff',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                    margin: '0 auto',
-                  }}></div>
+                <div style={{ minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <MorphingLoader 
+                    size="md" 
+                    color="yellow" 
+                    message="Finding specialists..."
+                  />
                 </div>
               ) : doctors.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

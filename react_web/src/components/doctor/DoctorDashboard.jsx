@@ -5,6 +5,7 @@ import { Calendar, FileText, Bell, Activity, Clock, LayoutDashboard } from 'luci
 import { Link } from 'react-router-dom';
 import DoctorLayout from './DoctorLayout';
 import BorderGlow from '../ui/BorderGlow';
+import MorphingLoader from '../MorphingLoader';
 
 export default function DoctorDashboard() {
   const [dashboard, setDashboard] = useState(null);
@@ -54,16 +55,11 @@ export default function DoctorDashboard() {
   return (
     <DoctorLayout title="Doctor Dashboard" icon={LayoutDashboard}>
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-          <div style={{
-            width: 48,
-            height: 48,
-            border: '4px solid rgba(124, 255, 103, 0.2)',
-            borderTop: '4px solid #7cff67',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-          }}></div>
-        </div>
+        <MorphingLoader 
+          size="lg" 
+          color="yellow" 
+          message="Loading dashboard data..."
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Stats Grid */}

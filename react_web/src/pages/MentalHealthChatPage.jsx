@@ -8,6 +8,7 @@ import TypingIndicator from '../components/chat/TypingIndicator'
 import LightRays from '../components/LightRays'
 import VideoBackground from '../components/VideoBackground'
 import WebcamEmotionDetector from '../components/WebcamEmotionDetector'
+import { CameraIcon } from '../components/CameraIcon'
 import { chatService } from '../services/chatService'
 import { getRandomVideo } from '../utils/videoHelper'
 import '../styles/MentalHealthChat.css'
@@ -279,6 +280,7 @@ export default function MentalHealthChatPage() {
               <WebcamEmotionDetector
                 enabled={webcamEnabled}
                 onEmotionDetected={setCurrentFacialEmotion}
+                onClose={() => setWebcamEnabled(false)}
                 compact={true}
               />
             </div>
@@ -290,7 +292,7 @@ export default function MentalHealthChatPage() {
             onClick={() => setWebcamEnabled(!webcamEnabled)}
             title={webcamEnabled ? 'Disable facial emotion detection' : 'Enable facial emotion detection'}
           >
-            {webcamEnabled ? '📹' : '📷'}
+            <CameraIcon className="w-6 h-6" />
           </button>
 
           <ChatContainer hasMessages={hasMessages}>
