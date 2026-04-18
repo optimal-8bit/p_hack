@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/chat/Sidebar'
 import ChatContainer from '../components/chat/ChatContainer'
 import MessageBubble from '../components/chat/MessageBubble'
@@ -28,6 +29,7 @@ export default function MentalHealthChatPage() {
   const [currentFacialEmotion, setCurrentFacialEmotion] = useState(null)
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null)
+  const navigate = useNavigate()
 
   // Log webcam state changes
   useEffect(() => {

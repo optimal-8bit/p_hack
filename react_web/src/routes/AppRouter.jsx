@@ -6,6 +6,13 @@ import IntroPage from '../pages/intro/IntroPage'
 import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
 import MentalHealthChatPage from '../pages/MentalHealthChatPage'
+import MedicineReminderPage from '../pages/MedicineReminderPage'
+import DoctorDashboardPage from '../pages/doctor/DoctorDashboardPage'
+import DoctorAppointmentsPage from '../pages/doctor/DoctorAppointmentsPage'
+import DoctorPatientsPage from '../pages/doctor/DoctorPatientsPage'
+import DoctorPrescriptionsPage from '../pages/doctor/DoctorPrescriptionsPage'
+import DoctorProfilePage from '../pages/doctor/DoctorProfilePage'
+import TestTailwind from '../pages/TestTailwind'
 
 export default function AppRouter() {
   return (
@@ -22,6 +29,18 @@ export default function AppRouter() {
         }
       />
       <Route path="/chat" element={<MentalHealthChatPage />} />
+      <Route path="/medicine-reminder" element={<MedicineReminderPage />} />
+      
+      {/* Doctor Dashboard Routes */}
+      <Route path="/doctor-dashboard" element={<DoctorDashboardPage />} />
+      <Route path="/doctor-appointments" element={<DoctorAppointmentsPage />} />
+      <Route path="/doctor-patients" element={<DoctorPatientsPage />} />
+      <Route path="/doctor-prescriptions" element={<DoctorPrescriptionsPage />} />
+      <Route path="/doctor-profile" element={<DoctorProfilePage />} />
+      
+      {/* Test Route */}
+      <Route path="/test-tailwind" element={<TestTailwind />} />
+      
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
