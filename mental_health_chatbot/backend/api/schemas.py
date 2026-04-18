@@ -18,6 +18,14 @@ class ChatRequest(BaseModel):
     facial_emotion: Optional[FacialEmotionData] = None  # Optional webcam emotion data
 
 
+class DoctorRecommendationInfo(BaseModel):
+    """Doctor recommendation info to include in chat response"""
+    should_recommend: bool
+    specialization: Optional[str] = None
+    reason: Optional[str] = None
+    urgency: Optional[str] = None
+
+
 class EmotionScore(BaseModel):
     emotion: str
     confidence: float
@@ -72,14 +80,6 @@ class LanguageInfo(BaseModel):
 
 class SupportedLanguagesResponse(BaseModel):
     languages: List[LanguageInfo]
-
-
-class DoctorRecommendationInfo(BaseModel):
-    """Doctor recommendation info to include in chat response"""
-    should_recommend: bool
-    specialization: Optional[str] = None
-    reason: Optional[str] = None
-    urgency: Optional[str] = None
 
 
 # Voice pipeline schemas

@@ -135,6 +135,14 @@ export default function MentalHealthChatPage() {
             congruence: result?.metadata?.emotionCongruence
           });
           
+          // FORCE DOCTOR RECOMMENDATION FOR TESTING
+          const forcedRecommendation = {
+            should_recommend: true,
+            specialization: "psychologist",
+            reason: "Based on our conversation, I think speaking with a mental health professional could be beneficial. They can provide personalized support and guidance tailored to your specific situation.",
+            urgency: "normal"
+          };
+          
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === botMessage.id 
@@ -143,7 +151,7 @@ export default function MentalHealthChatPage() {
                     streaming: false,
                     isCrisis: result?.metadata?.isCrisis || false,
                     emotionAnalysis: result?.metadata?.emotionAnalysis,
-                    doctorRecommendation: result?.metadata?.doctorRecommendation
+                    doctorRecommendation: result?.metadata?.doctorRecommendation || forcedRecommendation
                   } 
                 : msg
             )

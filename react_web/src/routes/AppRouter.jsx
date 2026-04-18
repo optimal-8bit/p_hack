@@ -13,6 +13,7 @@ import DoctorPatientsPage from '../pages/doctor/DoctorPatientsPage'
 import DoctorPrescriptionsPage from '../pages/doctor/DoctorPrescriptionsPage'
 import DoctorProfilePage from '../pages/doctor/DoctorProfilePage'
 import TestTailwind from '../pages/TestTailwind'
+import TestDoctorRecommendation from '../components/chat/TestDoctorRecommendation'
 
 export default function AppRouter() {
   return (
@@ -38,8 +39,9 @@ export default function AppRouter() {
       <Route path="/doctor-prescriptions" element={<DoctorPrescriptionsPage />} />
       <Route path="/doctor-profile" element={<DoctorProfilePage />} />
       
-      {/* Test Route */}
+      {/* Test Routes */}
       <Route path="/test-tailwind" element={<TestTailwind />} />
+      <Route path="/test-doctor-recommendation" element={<TestDoctorRecommendation />} />
       
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
