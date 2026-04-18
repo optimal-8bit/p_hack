@@ -11,6 +11,8 @@ from pipeline.message_type import get_message_type_detector
 from models.emotion_classifier import get_emotion_model
 from models.intent_classifier import get_intent_model
 from response_engine.template_selector import get_template_selector
+from response_engine.payload_builder import get_payload_builder
+from response_engine.gemini_generator import generate_gemini_response
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,7 @@ class ChatOrchestrator:
         self.emotion_model = get_emotion_model()
         self.intent_model = get_intent_model()
         self.template_selector = get_template_selector()
+        self.payload_builder = get_payload_builder()
         
         logger.info("Chat orchestrator initialized")
     
@@ -156,19 +159,75 @@ class ChatOrchestrator:
             turn_number = self.context_tracker.get_turn_number(session_id)
             context = self.context_tracker.get_context(session_id)
             
-            # Step 7: Select response (pass message type for appropriate response generation)
-            response_text = await self._run_in_executor(
-                self.template_selector.select,
-                emotion_result['emotion'],
-                intent_result['intent'],
-                turn_number,
-                context,
-                preprocessed.language,
-                user_message,  # Pass original user text for reflection
-                session_id,  # Pass session ID for personalization
-                emotion_result['confidence'],  # Pass emotion confidence for advanced processing
-                message_type_result  # Pass message type for appropriate response
-            )
+            # Step 7: Generate response with LLM integration
+            try:
+                # First get response components from template selector
+                response_components = await self._run_in_executor(
+                    self.template_selector.select,
+                    emotion_result['emotion'],
+                    intent_result['intent'],
+                    turn_number,
+                    context,
+                    preprocessed.language,
+                    user_message,  # Pass original user text for reflection
+                    session_id,  # Pass session ID for personalization
+                    emotion_result['confidence'],  # Pass emotion confidence for advanced processing
+                    message_type_result,  # Pass message type for appropriate response
+                    True  # return_components=True for LLM integration
+                )
+                
+                # Build structured payload for LLM
+                llm_payload = self.payload_builder.build_llm_payload(
+                    user_input=user_message,
+                    processed_text=preprocessed.english_text,
+                    message_type=message_type_result,
+                    emotion=emotion_result['emotion'],
+                    emotion_confidence=emotion_result['confidence'],
+                    intent=intent_result['intent'],
+                    intent_confidence=intent_result['confidence'],
+                    turn_number=turn_number,
+                    context=context,
+                    response_components=response_components,
+                    allow_therapist=response_components.get('allow_therapist', False)
+                )
+                
+                # Try Gemini generation with fallback
+                gemini_response = await generate_gemini_response(llm_payload)
+                
+                if gemini_response:
+                    # Use Gemini-generated response
+                    response_text = gemini_response
+                    logger.info("Using Gemini-generated response")
+                else:
+                    # Fallback to template response
+                    response_text = response_components.get('assembled_response', 
+                                                          "I'm here to listen. Can you share more about how you're feeling?")
+                    logger.info("Using template fallback response")
+                
+                # Translate if needed
+                if preprocessed.language != "en":
+                    response_text = await self._run_in_executor(
+                        self.template_selector.translator.translate_from_english,
+                        response_text,
+                        preprocessed.language
+                    )
+                
+            except Exception as e:
+                logger.error(f"Error in Gemini generation pipeline: {e}")
+                # Complete fallback to original template system
+                response_text = await self._run_in_executor(
+                    self.template_selector.select,
+                    emotion_result['emotion'],
+                    intent_result['intent'],
+                    turn_number,
+                    context,
+                    preprocessed.language,
+                    user_message,
+                    session_id,
+                    emotion_result['confidence'],
+                    message_type_result,
+                    False  # return_components=False for fallback
+                )
             
             # Step 8: Save turn to context
             turn_record = TurnRecord(

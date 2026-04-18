@@ -231,8 +231,9 @@ class AdvancedResponseBuilder:
         turn_number: int,
         session_id: str,
         context_emotions: List[str] = None,
-        base_template: str = ""
-    ) -> str:
+        base_template: str = "",
+        return_components: bool = False
+    ) -> str | Dict:
         """
         Build advanced, realistic response
         
@@ -245,9 +246,10 @@ class AdvancedResponseBuilder:
             session_id: Session identifier
             context_emotions: List of recent emotions
             base_template: Base template (optional)
+            return_components: If True, return components dict instead of assembled response
         
         Returns:
-            Enhanced response string
+            Enhanced response string or components dict if return_components=True
         """
         # Initialize session data if needed
         if session_id not in self.session_data:
@@ -306,6 +308,20 @@ class AdvancedResponseBuilder:
         if should_suggest:
             response += " Have you considered talking to a counselor or therapist about this?"
             session_data["last_professional_suggestion"] = turn_number
+        
+        # Return components dict if requested (for LLM integration)
+        if return_components:
+            components_dict = {
+                "validation": components.validation,
+                "reflection": components.reflection,
+                "normalization": components.normalization,
+                "coping": components.coping,
+                "gentle_guidance": components.gentle_guidance,
+                "question": components.question,
+                "assembled_response": response,
+                "allow_therapist": should_suggest
+            }
+            return components_dict
         
         return response
     

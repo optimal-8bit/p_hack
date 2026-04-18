@@ -11,6 +11,7 @@ An offline, privacy-first, multilingual AI mental health chatbot built for healt
 - **Crisis Detection**: Immediate safety responses with helpline information
 - **Context-Aware**: Maintains conversation history for personalized responses
 - **No Hallucinations**: Template-based responses ensure safety and reliability
+- **🆕 Optional LLM**: Gemini API integration for natural language generation (see `GEMINI_QUICKSTART.md`)
 
 ## 🏗️ Architecture
 

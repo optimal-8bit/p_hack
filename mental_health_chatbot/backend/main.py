@@ -3,6 +3,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from dotenv import load_dotenv
 from api.routes import router
 from database.db import create_tables
 from models.emotion_classifier import get_emotion_model
@@ -10,6 +11,9 @@ from models.intent_classifier import get_intent_model
 from models.translator import get_translation_manager
 from pipeline.orchestrator import get_orchestrator
 import config
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(

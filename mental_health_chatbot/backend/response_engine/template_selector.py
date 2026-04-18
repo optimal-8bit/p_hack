@@ -1,6 +1,6 @@
 import random
 import logging
-from typing import List
+from typing import List, Dict
 from response_engine.templates import RESPONSE_TEMPLATES
 from response_engine.advanced_response_builder import get_advanced_response_builder
 from pipeline.context_tracker import TurnRecord
@@ -36,8 +36,9 @@ class TemplateSelector:
         user_text: str = "",
         session_id: str = "default",
         emotion_confidence: float = 1.0,
-        message_type_result: dict = None
-    ) -> str:
+        message_type_result: dict = None,
+        return_components: bool = False
+    ) -> str | Dict:
         """Select and enhance response template with advanced intelligence layer"""
         
         # Handle non-emotional message types
@@ -47,6 +48,13 @@ class TemplateSelector:
             if msg_type == 'short_reply':
                 # For short replies, acknowledge and ask clarifying question
                 response = self._generate_short_reply_response(user_text, context, emotion)
+                if return_components:
+                    return {
+                        "validation": "Got it, thank you for sharing that.",
+                        "question": "Can you tell me more about what's been on your mind?",
+                        "assembled_response": response,
+                        "allow_therapist": False
+                    }
                 if detected_language != "en":
                     response = self.translator.translate_from_english(response, detected_language)
                 return response
@@ -54,6 +62,13 @@ class TemplateSelector:
             elif msg_type == 'contextual':
                 # For contextual messages, acknowledge and continue conversation
                 response = self._generate_contextual_response(user_text, context, emotion)
+                if return_components:
+                    return {
+                        "validation": "I see. That makes sense.",
+                        "question": "What was that experience like for you?",
+                        "assembled_response": response,
+                        "allow_therapist": False
+                    }
                 if detected_language != "en":
                     response = self.translator.translate_from_english(response, detected_language)
                 return response
@@ -61,6 +76,13 @@ class TemplateSelector:
             elif msg_type == 'neutral':
                 # For neutral messages, use gentle exploration
                 response = self._generate_neutral_response(user_text, context)
+                if return_components:
+                    return {
+                        "validation": "I'm here to listen.",
+                        "question": "Is there something on your mind you'd like to talk about?",
+                        "assembled_response": response,
+                        "allow_therapist": False
+                    }
                 if detected_language != "en":
                     response = self.translator.translate_from_english(response, detected_language)
                 return response
@@ -69,8 +91,8 @@ class TemplateSelector:
         # Extract context emotions for advanced builder
         context_emotions = [turn.emotion for turn in context[-5:]] if context else []
         
-        # Use advanced response builder directly (bypasses old template system)
-        enhanced_response = self.advanced_response_builder.build_response(
+        # Use advanced response builder (can return components or assembled response)
+        result = self.advanced_response_builder.build_response(
             user_text=user_text,
             emotion=emotion,
             emotion_confidence=emotion_confidence,
@@ -78,10 +100,16 @@ class TemplateSelector:
             turn_number=turn_number,
             session_id=session_id,
             context_emotions=context_emotions,
-            base_template=""  # Not used in advanced builder
+            base_template="",  # Not used in advanced builder
+            return_components=return_components
         )
         
-        # Translate if needed
+        # If returning components, return as-is
+        if return_components:
+            return result
+        
+        # Otherwise translate if needed and return response
+        enhanced_response = result
         if detected_language != "en":
             enhanced_response = self.translator.translate_from_english(enhanced_response, detected_language)
         
