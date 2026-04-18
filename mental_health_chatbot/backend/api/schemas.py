@@ -2,15 +2,30 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 
 
+class FacialEmotionData(BaseModel):
+    """Facial emotion detected from webcam using face-api.js"""
+    dominant_emotion: str
+    confidence: float
+    all_emotions: Dict[str, float] = Field(default_factory=dict)
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    timestamp: Optional[float] = None
+
+
 class ChatRequest(BaseModel):
     session_id: str = Field(..., min_length=1, max_length=100)
     message: str = Field(..., min_length=1, max_length=1000)
+    facial_emotion: Optional[FacialEmotionData] = None  # Optional webcam emotion data
 
 
 class EmotionScore(BaseModel):
     emotion: str
     confidence: float
     all_scores: Dict[str, float]
+    facial_emotion: Optional[str] = None  # Emotion from webcam
+    facial_confidence: Optional[float] = None
+    is_multimodal: bool = False  # True if both text and facial emotions were used
+    emotion_congruence: Optional[str] = None  # "congruent", "incongruent", or None
 
 
 class IntentScore(BaseModel):

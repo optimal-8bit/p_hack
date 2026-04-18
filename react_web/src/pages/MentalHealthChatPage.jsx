@@ -6,6 +6,7 @@ import ChatInput from '../components/chat/ChatInput'
 import TypingIndicator from '../components/chat/TypingIndicator'
 import LightRays from '../components/LightRays'
 import VideoBackground from '../components/VideoBackground'
+import WebcamEmotionDetector from '../components/WebcamEmotionDetector'
 import { chatService } from '../services/chatService'
 import { getRandomVideo } from '../utils/videoHelper'
 import '../styles/MentalHealthChat.css'
@@ -23,8 +24,19 @@ export default function MentalHealthChatPage() {
   const [currentVideo, setCurrentVideo] = useState(null)
   const [keepVideoPlaying, setKeepVideoPlaying] = useState(false)
   const [sessionId] = useState(() => `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`)
+  const [webcamEnabled, setWebcamEnabled] = useState(false)
+  const [currentFacialEmotion, setCurrentFacialEmotion] = useState(null)
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null)
+
+  // Log webcam state changes
+  useEffect(() => {
+    console.log('📹 [CHAT] Webcam state changed:', { 
+      enabled: webcamEnabled,
+      hasEmotion: !!currentFacialEmotion,
+      emotion: currentFacialEmotion?.dominant_emotion
+    });
+  }, [webcamEnabled, currentFacialEmotion]);
 
   const hasMessages = messages.length > 0
 
@@ -58,11 +70,19 @@ export default function MentalHealthChatPage() {
   const handleSendMessage = async (userInput) => {
     if (!userInput.trim() || inputDisabled) return
 
+    console.log('💬 [CHAT] Sending message:', {
+      message: userInput.trim(),
+      hasFacialEmotion: !!currentFacialEmotion,
+      facialEmotion: currentFacialEmotion?.dominant_emotion,
+      facialConfidence: currentFacialEmotion?.confidence
+    });
+
     const userMessage = {
       id: createMessageId(),
       role: 'user',
       content: userInput.trim(),
       timestamp: new Date().toISOString(),
+      facialEmotion: currentFacialEmotion, // Include facial emotion if available
     }
 
     const botMessage = {
@@ -97,6 +117,8 @@ export default function MentalHealthChatPage() {
       await chatService.streamReply({
         messages: conversationHistory,
         signal: controller.signal,
+        sessionId: sessionId,
+        facialEmotion: currentFacialEmotion, // Pass facial emotion to backend
         onToken: (token) => {
           setMessages((prev) =>
             prev.map((msg) =>
@@ -105,13 +127,20 @@ export default function MentalHealthChatPage() {
           )
         },
         onDone: (result) => {
+          console.log('✅ [CHAT] Message completed:', {
+            emotionAnalysis: result?.metadata?.emotionAnalysis,
+            isMultimodal: result?.metadata?.isMultimodal,
+            congruence: result?.metadata?.emotionCongruence
+          });
+          
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === botMessage.id 
                 ? { 
                     ...msg, 
                     streaming: false,
-                    isCrisis: result?.metadata?.isCrisis || false 
+                    isCrisis: result?.metadata?.isCrisis || false,
+                    emotionAnalysis: result?.metadata?.emotionAnalysis // Include emotion analysis
                   } 
                 : msg
             )
@@ -120,7 +149,7 @@ export default function MentalHealthChatPage() {
           setInputDisabled(false)
         },
         onError: (error) => {
-          console.error('Chat error:', error)
+          console.error('❌ [CHAT] Chat error:', error)
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === botMessage.id
@@ -139,7 +168,7 @@ export default function MentalHealthChatPage() {
       })
     } catch (error) {
       if (!controller.signal.aborted) {
-        console.error('Streaming error:', error)
+        console.error('❌ [CHAT] Streaming error:', error)
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === botMessage.id
@@ -241,12 +270,37 @@ export default function MentalHealthChatPage() {
         />
 
         <div className="chat-main-area">
+          {/* Webcam Emotion Detector - Top Right Corner */}
+          {webcamEnabled && (
+            <div className="webcam-detector-container">
+              <WebcamEmotionDetector
+                enabled={webcamEnabled}
+                onEmotionDetected={setCurrentFacialEmotion}
+                compact={true}
+              />
+            </div>
+          )}
+
+          {/* Webcam Toggle Button */}
+          <button
+            className={`webcam-toggle-btn ${webcamEnabled ? 'active' : ''}`}
+            onClick={() => setWebcamEnabled(!webcamEnabled)}
+            title={webcamEnabled ? 'Disable facial emotion detection' : 'Enable facial emotion detection'}
+          >
+            {webcamEnabled ? '📹' : '📷'}
+          </button>
+
           <ChatContainer hasMessages={hasMessages}>
             {!hasMessages ? (
               <div className="welcome-screen">
                 <div className="welcome-content">
                   <h1>Mental Health Support</h1>
                   <p>I'm here to listen and support you. How are you feeling today?</p>
+                  <div className="feature-hint">
+                    <p className="hint-text">
+                      💡 Enable webcam emotion detection for enhanced support
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -260,6 +314,8 @@ export default function MentalHealthChatPage() {
                     error={message.error}
                     isCrisis={message.isCrisis}
                     voiceAnalysis={message.voiceAnalysis}
+                    emotionAnalysis={message.emotionAnalysis}
+                    facialEmotion={message.facialEmotion}
                   />
                 ))}
                 {isTyping && <TypingIndicator />}

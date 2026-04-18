@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .video-container {
+            position: relative;
+            width: 400px;
+            height: 300px;
+            margin: 20px auto;
+            border: 2px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+        
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .start { background: #4CAF50; color: white; }
+        .stop { background: #f44336; color: white; }
+        
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 Video Debug Test</h1>
+        <p>This tests if the webcam video element displays properly.</p>
+        
+        <div class="video-container">
+            <video id="video" autoplay muted playsinline></video>
+        </div>
+        
+        <div>
+            <button class="start" onclick="startVideo()">Start Video</button>
+            <button class="stop" onclick="stopVideo()">Stop Video</button>
+        </div>
+        
+        <div id="info" class="info">
+            Click "Start Video" to test webcam display...
+        </div>
+    </div>
+
+    <script>
+        let video = document.getElementById('video');
+        let stream = null;
+        let info = document.getElementById('info');
+        
+        function log(message) {
+            console.log(message);
+            info.innerHTML += message + '<br>';
+        }
+        
+        async function startVideo() {
+            try {
+                log('🚀 Requesting webcam access...');
+                
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    }
+                });
+                
+                log('✅ Webcam access granted');
+                log('📊 Stream info: ' + JSON.stringify({
+                    tracks: stream.getVideoTracks().length,
+                    settings: stream.getVideoTracks()[0]?.getSettings()
+                }));
+                
+                video.srcObject = stream;
+                
+                video.onloadedmetadata = () => {
+                    log('📺 Video metadata loaded');
+                    log('📐 Video dimensions: ' + video.videoWidth + 'x' + video.videoHeight);
+                    log('📐 Display dimensions: ' + video.offsetWidth + 'x' + video.offsetHeight);
+                    log('🎬 Ready state: ' + video.readyState);
+                };
+                
+                video.oncanplay = () => {
+                    log('▶️ Video can play');
+                };
+                
+                video.onplay = () => {
+                    log('🎬 Video started playing');
+                };
+                
+                video.onerror = (e) => {
+                    log('❌ Video error: ' + e.message);
+                };
+                
+                await video.play();
+                log('✅ Video play() called successfully');
+                
+            } catch (error) {
+                log('❌ Error: ' + error.message);
+                if (error.name === 'NotAllowedError') {
+                    log('⚠️ Camera permission denied');
+                } else if (error.name === 'NotFoundError') {
+                    log('⚠️ No camera found');
+                } else if (error.name === 'NotReadableError') {
+                    log('⚠️ Camera already in use');
+                }
+            }
+        }
+        
+        function stopVideo() {
+            if (stream) {
+                log('🛑 Stopping video...');
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                    log('🔌 Stopped track: ' + track.kind);
+                });
+                stream = null;
+                video.srcObject = null;
+                log('✅ Video stopped');
+            }
+        }
+        
+        // Auto-start for testing
+        window.addEventListener('load', () => {
+            log('🚀 Page loaded, ready to test video');
+        });
+    </script>
+</body>
+</html>

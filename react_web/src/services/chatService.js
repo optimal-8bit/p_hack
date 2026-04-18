@@ -23,7 +23,7 @@ async function simulateStreamingFromResponse(text, signal, onToken, delay = 20) 
 }
 
 export const chatService = {
-  async streamReply({ messages, signal, onToken, onDone, onError }) {
+  async streamReply({ messages, signal, sessionId, facialEmotion, onToken, onDone, onError }) {
     // Check if we should use mock responses
     if (USE_MOCK) {
       try {
@@ -65,16 +65,32 @@ export const chatService = {
         throw new Error('Message cannot be empty')
       }
 
+      // Prepare request body
+      const requestBody = {
+        session_id: sessionId || getSessionId(),
+        message: lastUserMessage
+      }
+
+      // Add facial emotion data if available
+      if (facialEmotion) {
+        requestBody.facial_emotion = {
+          dominant_emotion: facialEmotion.dominant_emotion,
+          confidence: facialEmotion.confidence,
+          all_emotions: facialEmotion.all_emotions,
+          age: facialEmotion.age,
+          gender: facialEmotion.gender,
+          timestamp: facialEmotion.timestamp
+        }
+        console.log('Sending facial emotion data:', requestBody.facial_emotion)
+      }
+
       // Call the backend API
       const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          session_id: getSessionId(),
-          message: lastUserMessage
-        }),
+        body: JSON.stringify(requestBody),
         signal
       })
 
@@ -84,6 +100,15 @@ export const chatService = {
       }
 
       const data = await response.json()
+
+      // Log emotion analysis if multimodal
+      if (data.emotion?.is_multimodal) {
+        console.log('Multimodal emotion analysis:', {
+          textEmotion: data.emotion.emotion,
+          facialEmotion: data.emotion.facial_emotion,
+          congruence: data.emotion.emotion_congruence
+        })
+      }
 
       // Simulate streaming the response text character by character
       // This provides a nice typewriter effect even though the backend returns the full response
@@ -100,12 +125,21 @@ export const chatService = {
         metadata: {
           emotion: data.emotion?.emotion,
           emotionConfidence: data.emotion?.confidence,
+          facialEmotion: data.emotion?.facial_emotion,
+          facialConfidence: data.emotion?.facial_confidence,
+          isMultimodal: data.emotion?.is_multimodal,
+          emotionCongruence: data.emotion?.emotion_congruence,
           intent: data.intent?.intent,
           intentConfidence: data.intent?.confidence,
           language: data.detected_language,
           isCrisis: data.is_crisis,
           processingTime: data.processing_time_ms,
-          turnNumber: data.turn_number
+          turnNumber: data.turn_number,
+          emotionAnalysis: data.emotion?.is_multimodal ? {
+            textEmotion: data.emotion.emotion,
+            facialEmotion: data.emotion.facial_emotion,
+            congruence: data.emotion.emotion_congruence
+          } : null
         }
       })
 

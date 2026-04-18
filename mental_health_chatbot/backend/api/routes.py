@@ -16,6 +16,7 @@ from pipeline.orchestrator import get_orchestrator
 from pipeline.context_tracker import get_context_tracker
 from models.emotion_classifier import get_emotion_model
 from models.intent_classifier import get_intent_model
+from models.emotion_fusion import fuse_emotions
 from database.db import get_session_history, save_chat_turn, save_crisis_event
 import config
 
@@ -26,7 +27,7 @@ router = APIRouter()
 
 @router.post("/api/chat", response_model=ChatResponseSchema)
 async def chat(request: ChatRequest):
-    """Process a chat message"""
+    """Process a chat message with optional facial emotion data"""
     try:
         orchestrator = get_orchestrator()
         
@@ -35,6 +36,45 @@ async def chat(request: ChatRequest):
             session_id=request.session_id,
             user_message=request.message
         )
+        
+        # If facial emotion data is provided, fuse it with text emotion
+        fusion_result = None
+        if request.facial_emotion:
+            logger.info(
+                f"📹 [EMOTION-FUSION] Received facial emotion data: "
+                f"emotion={request.facial_emotion.dominant_emotion}, "
+                f"confidence={request.facial_emotion.confidence:.3f}, "
+                f"age={request.facial_emotion.age}, "
+                f"gender={request.facial_emotion.gender}"
+            )
+            
+            fusion_result = fuse_emotions(
+                text_emotion=response.emotion,
+                text_confidence=response.emotion_confidence,
+                facial_emotion=request.facial_emotion.dominant_emotion,
+                facial_confidence=request.facial_emotion.confidence,
+                facial_all_scores=request.facial_emotion.all_emotions
+            )
+            
+            logger.info(
+                f"🧠 [EMOTION-FUSION] Fusion completed: "
+                f"text_emotion={response.emotion}({response.emotion_confidence:.3f}), "
+                f"facial_emotion={request.facial_emotion.dominant_emotion}({request.facial_emotion.confidence:.3f}), "
+                f"fused_emotion={fusion_result['fused_emotion']}({fusion_result['fused_confidence']:.3f}), "
+                f"congruence={fusion_result.get('congruence')}"
+            )
+            
+            # Update response with fused emotion
+            response.emotion = fusion_result["fused_emotion"]
+            response.emotion_confidence = fusion_result["fused_confidence"]
+            
+            # Log incongruence if detected
+            if fusion_result.get("congruence") == "incongruent":
+                logger.warning(
+                    f"⚠️ [EMOTION-FUSION] INCONGRUENCE DETECTED: {fusion_result['fusion_note']}"
+                )
+        else:
+            logger.info("💬 [EMOTION-FUSION] Text-only emotion analysis (no facial data)")
         
         # Save to database (non-blocking)
         asyncio.create_task(
@@ -60,14 +100,23 @@ async def chat(request: ChatRequest):
             )
         
         # Convert to schema
+        emotion_score = EmotionScore(
+            emotion=response.emotion,
+            confidence=response.emotion_confidence,
+            all_scores={},
+            is_multimodal=fusion_result["is_multimodal"] if fusion_result else False,
+            emotion_congruence=fusion_result.get("congruence") if fusion_result else None
+        )
+        
+        # Add facial emotion data if available
+        if fusion_result and fusion_result["is_multimodal"]:
+            emotion_score.facial_emotion = fusion_result["facial_emotion"]
+            emotion_score.facial_confidence = fusion_result["facial_confidence"]
+        
         return ChatResponseSchema(
             response_text=response.response_text,
             detected_language=response.detected_language,
-            emotion=EmotionScore(
-                emotion=response.emotion,
-                confidence=response.emotion_confidence,
-                all_scores={}  # Can be populated if needed
-            ),
+            emotion=emotion_score,
             intent=IntentScore(
                 intent=response.intent,
                 confidence=response.intent_confidence
