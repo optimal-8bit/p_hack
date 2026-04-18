@@ -5,6 +5,7 @@ import DashboardPage from '../pages/DashboardPage'
 import IntroPage from '../pages/intro/IntroPage'
 import LoginPage from '../pages/LoginPage'
 import RegisterPage from '../pages/RegisterPage'
+import MentalHealthChatPage from '../pages/MentalHealthChatPage'
 
 export default function AppRouter() {
   return (
@@ -20,6 +21,7 @@ export default function AppRouter() {
           </ProtectedRoute>
         }
       />
+      <Route path="/chat" element={<MentalHealthChatPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
