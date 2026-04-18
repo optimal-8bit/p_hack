@@ -1,0 +1,81 @@
+/* Upload Menu Dropdown */
+.upload-menu {
+  position: absolute;
+  bottom: 3.5rem;
+  left: 0;
+  background: #1c1c1e;
+  border: 1px solid #2a2a2a;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  min-width: 200px;
+  padding: 0.25rem;
+  z-index: 50;
+  animation: menuSlideIn 0.2s ease-out;
+}
+
+@keyframes menuSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.upload-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+  color: #fff;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.upload-menu-item:hover {
+  background: #2a2a2a;
+}
+
+.upload-menu-item:active {
+  background: #333;
+}
+
+.upload-menu-icon {
+  flex-shrink: 0;
+  color: #e0e0e0;
+}
+
+.upload-menu-text {
+  flex: 1;
+  color: #e0e0e0;
+}
+
+.upload-menu-input {
+  display: none;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .upload-menu {
+    min-width: 180px;
+  }
+
+  .upload-menu-item {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  .upload-menu-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
