@@ -39,7 +39,10 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <button onClick={handleLogout}>Logout</button>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+          <button onClick={() => navigate('/chat')}>Open Mental Health Chat</button>
+          <button onClick={handleLogout}>Logout</button>
+        </div>
       </section>
     </main>
   )

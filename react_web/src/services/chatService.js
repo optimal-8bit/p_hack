@@ -1,6 +1,8 @@
 import { apiClient } from '../lib/apiClient'
+import { getMockResponse, simulateStreaming } from '../mock/mockResponses'
 
 const CHAT_STREAM_PATH = import.meta.env.VITE_CHAT_STREAM_PATH || '/chat/stream'
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || false
 
 function buildFormData({ messages, files, metadata }) {
   const formData = new FormData()
@@ -21,6 +23,39 @@ function buildFormData({ messages, files, metadata }) {
 
 export const chatService = {
   async streamReply({ messages, files = [], metadata, signal, onToken, onDone, onError }) {
+    // Check if we should use mock responses
+    if (USE_MOCK) {
+      try {
+        // Get the last user message
+        const lastUserMessage = messages[messages.length - 1]?.content || ''
+        
+        // Get mock response
+        const mockResponse = getMockResponse(lastUserMessage)
+        
+        // Simulate streaming with typewriter effect
+        // 300ms initial delay (thinking time), then 20ms per character
+        await simulateStreaming(
+          mockResponse,
+          (char) => {
+            if (signal?.aborted) throw new Error('Aborted')
+            onToken?.(char)
+          },
+          20,   // 20ms delay between characters
+          300   // 300ms initial delay before starting
+        )
+        
+        onDone?.({ done: true })
+        return
+      } catch (error) {
+        if (error.message === 'Aborted') {
+          return
+        }
+        onError?.(error)
+        throw error
+      }
+    }
+
+    // Use real backend API
     const body = buildFormData({ messages, files, metadata })
 
     try {
