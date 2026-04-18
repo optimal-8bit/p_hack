@@ -77,7 +77,7 @@ class TranslationManager:
             return text
     
     def _get_translation_model(self, lang_code: str, direction: str):
-        """Lazy-load translation model (ONNX or transformers fallback)"""
+        """Lazy-load translation model (transformers only, no ONNX)"""
         model_key = f"{lang_code}_{direction}"
         
         # Return cached model if already loaded
@@ -90,30 +90,7 @@ class TranslationManager:
         
         model_dir = config.TRANSLATION_MODEL_DIRS[lang_code][direction]
         
-        if not model_dir.exists():
-            logger.warning(f"Translation model directory not found: {model_dir}")
-            return None, None
-        
-        # Try loading ONNX model first
-        try:
-            from optimum.onnxruntime import ORTModelForSeq2SeqLM
-            from transformers import MarianTokenizer
-            
-            onnx_path = model_dir / "model.onnx"
-            if onnx_path.exists():
-                model = ORTModelForSeq2SeqLM.from_pretrained(str(model_dir))
-                tokenizer = MarianTokenizer.from_pretrained(str(model_dir))
-                
-                self.models[model_key] = model
-                self.tokenizers[model_key] = tokenizer
-                self.use_onnx[model_key] = True
-                
-                logger.info(f"Loaded ONNX translation model: {model_key}")
-                return model, tokenizer
-        except Exception as e:
-            logger.warning(f"Failed to load ONNX translation model {model_key}: {e}")
-        
-        # Fallback to transformers
+        # Try loading from transformers (always use transformers, not ONNX)
         try:
             from transformers import MarianMTModel, MarianTokenizer
             
@@ -122,6 +99,8 @@ class TranslationManager:
                 hf_model_id = f"Helsinki-NLP/opus-mt-{lang_code}-en"
             else:
                 hf_model_id = f"Helsinki-NLP/opus-mt-en-{lang_code}"
+            
+            logger.info(f"Loading translation model from HuggingFace: {hf_model_id}")
             
             model = MarianMTModel.from_pretrained(hf_model_id)
             tokenizer = MarianTokenizer.from_pretrained(hf_model_id)
@@ -134,11 +113,11 @@ class TranslationManager:
             return model, tokenizer
             
         except Exception as e:
-            logger.error(f"Failed to load transformers translation model {model_key}: {e}")
+            logger.error(f"Failed to load translation model {model_key}: {e}")
             return None, None
     
     def _translate_onnx(self, text: str, model, tokenizer) -> str:
-        """Translate using ONNX model"""
+        """Translate using ONNX model (not used for translation anymore)"""
         try:
             inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
             outputs = model.generate(**inputs)
@@ -152,7 +131,7 @@ class TranslationManager:
         """Translate using transformers model"""
         try:
             inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
-            outputs = model.generate(**inputs)
+            outputs = model.generate(**inputs, max_length=512)
             translated = tokenizer.decode(outputs[0], skip_special_tokens=True)
             return translated
         except Exception as e:
