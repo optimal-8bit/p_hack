@@ -1,5 +1,6 @@
 import logging
 import uvicorn
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -13,8 +14,9 @@ from models.translator import get_translation_manager
 from pipeline.orchestrator import get_orchestrator
 import config
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from parent directory .env file
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 # Configure logging
 logging.basicConfig(

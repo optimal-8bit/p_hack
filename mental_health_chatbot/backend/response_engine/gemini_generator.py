@@ -190,7 +190,7 @@ class GeminiGenerator:
                 return None
             
             # Get model name from environment or use default
-            model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+            model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
             
             # Configure Gemini
             genai.configure(api_key=api_key)
@@ -289,8 +289,8 @@ Generate the final response strictly following the rules."""
                 logger.error("   Wait 1 minute or upgrade to paid tier")
                 logger.error("   System will use template fallback")
             elif "404" in str(e) or "not found" in error_msg:
-                logger.error(f"🚫 MODEL NOT FOUND: {os.getenv('GEMINI_MODEL', 'gemini-2.0-flash-exp')}")
-                logger.error("   Available models: gemini-pro, gemini-2.0-flash-exp")
+                logger.error(f"🚫 MODEL NOT FOUND: {os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')}")
+                logger.error("   Available models: gemini-pro, gemini-2.5-flash")
                 logger.error("   Update GEMINI_MODEL in .env file")
             elif "403" in str(e) or "permission" in error_msg or "api key" in error_msg:
                 logger.error("🚫 API KEY INVALID OR EXPIRED")

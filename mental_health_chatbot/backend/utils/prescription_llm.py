@@ -1,274 +1,194 @@
 """
-LLM-based prescription text analysis
-Uses Phi-3 Mini for structured medicine extraction
+Gemini Vision API for prescription image analysis
+Direct image-to-LLM using langchain_google_genai (matches Con_Code implementation)
 """
 
 import json
 import logging
-import asyncio
-import time
+import base64
 from typing import List, Dict, Optional
-import config
+import os
 
 logger = logging.getLogger(__name__)
 
-# Import LLM components
+# Import LangChain Gemini
 try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-    import torch
-    TRANSFORMERS_AVAILABLE = True
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_core.messages import HumanMessage
+    GEMINI_AVAILABLE = True
 except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-    logger.warning("Transformers not available. Install with: pip install transformers torch")
+    GEMINI_AVAILABLE = False
+    logger.error("LangChain Gemini not available. Install: pip install langchain-google-genai")
 
-# Global model cache
-_model = None
-_tokenizer = None
-_model_loaded = False
+# Global Gemini model
+_vision_llm = None
+_gemini_configured = False
 
 
-async def extract_medicines_with_llm(prescription_text: str) -> Optional[List[Dict]]:
+async def extract_medicines_from_image(image_bytes: bytes) -> Optional[List[Dict]]:
     """
-    Extract medicines from prescription text using LLM
+    Send prescription image directly to Gemini Vision API using LangChain
     
+    Args:
+        image_bytes: Raw image bytes from upload
+        
     Returns:
-        List of medicine dictionaries or None if extraction fails
+        List of medicine dicts or None if fails
     """
-    if not config.LLM_ENABLED:
-        logger.info("LLM disabled in config")
-        return None
-    
-    if not TRANSFORMERS_AVAILABLE:
-        logger.warning("Transformers not available")
+    if not GEMINI_AVAILABLE:
+        logger.error("❌ LangChain Gemini SDK not installed")
+        logger.error("Install: pip install langchain-google-genai")
         return None
     
     try:
-        # Ensure model is loaded
-        if not await _ensure_model_loaded():
+        if not _ensure_gemini_configured():
             return None
         
-        # Generate extraction with timeout
-        result = await asyncio.wait_for(
-            _run_extraction(prescription_text),
-            timeout=config.LLM_TIMEOUT
-        )
+        return await _analyze_image(image_bytes)
         
-        return result
-        
-    except asyncio.TimeoutError:
-        logger.warning(f"LLM extraction timeout ({config.LLM_TIMEOUT}s)")
-        return None
     except Exception as e:
-        logger.error(f"LLM extraction error: {e}", exc_info=True)
+        logger.error(f"❌ Gemini image analysis failed: {e}", exc_info=True)
         return None
 
 
-async def _ensure_model_loaded() -> bool:
-    """Ensure model is loaded (lazy loading)"""
-    global _model, _tokenizer, _model_loaded
+def _ensure_gemini_configured() -> bool:
+    """Configure Gemini API (synchronous)"""
+    global _vision_llm, _gemini_configured
     
-    if _model_loaded:
-        return _model is not None
+    if _gemini_configured:
+        return _vision_llm is not None
     
     try:
-        logger.info("Loading Phi-3 Mini for prescription analysis...")
+        api_key = os.getenv("GEMINI_API_KEY")
         
-        model, tokenizer = await asyncio.get_event_loop().run_in_executor(
-            None, _load_model
+        if not api_key:
+            logger.error("❌ GEMINI_API_KEY not found in environment!")
+            logger.error("❌ Make sure .env file exists with GEMINI_API_KEY")
+            _gemini_configured = True
+            return False
+        
+        # Get model name from environment or use default
+        model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+        
+        logger.info(f"✅ Found GEMINI_API_KEY: {api_key[:10]}...")
+        logger.info(f"✅ Using model: {model_name}")
+        
+        # Create LangChain Gemini Vision model (matches Con_Code implementation)
+        _vision_llm = ChatGoogleGenerativeAI(
+            model=model_name,
+            temperature=0.1,
+            google_api_key=api_key,
         )
         
-        _model = model
-        _tokenizer = tokenizer
-        _model_loaded = True
+        _gemini_configured = True
+        logger.info("✅ Gemini Vision API configured successfully")
+        return True
         
-        if model is not None:
-            logger.info("✅ Phi-3 Mini loaded successfully for prescription analysis")
-            return True
-        else:
-            logger.warning("⚠️ Failed to load Phi-3 Mini")
-            return False
-            
     except Exception as e:
-        logger.error(f"Error loading model: {e}")
-        _model_loaded = True
+        logger.error(f"❌ Gemini config failed: {e}", exc_info=True)
+        _gemini_configured = True
         return False
 
 
-def _load_model():
-    """Load Phi-3 Mini model"""
-    try:
-        model_name = config.LLM_MODEL_NAME
-        
-        # Detect device
-        if torch.cuda.is_available():
-            device = "cuda"
-            device_map = "auto"
-            torch_dtype = torch.float16
-            logger.info("🚀 Using GPU for prescription analysis")
-        else:
-            device = "cpu"
-            device_map = "cpu"
-            torch_dtype = "auto"
-            logger.info("⚠️ Using CPU for prescription analysis (will take 20-30 seconds)")
-        
-        # Load tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_name,
-            trust_remote_code=True
-        )
-        
-        # Load model
-        model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            device_map=device_map,
-            torch_dtype=torch_dtype,
-            trust_remote_code=True
-        )
-        
-        logger.info(f"Model loaded on: {device.upper()}")
-        return model, tokenizer
-        
-    except Exception as e:
-        logger.error(f"Failed to load model: {e}")
-        return None, None
-
-
-async def _run_extraction(prescription_text: str) -> Optional[List[Dict]]:
-    """Run medicine extraction"""
-    global _model, _tokenizer
+async def _analyze_image(image_bytes: bytes) -> Optional[List[Dict]]:
+    """Send image to Gemini and get medicines (matches Con_Code implementation)"""
+    global _vision_llm
     
-    if _model is None or _tokenizer is None:
+    if _vision_llm is None:
+        logger.error("❌ Vision LLM not configured")
         return None
     
-    # Create extraction prompt
-    system_prompt = """You are a medical prescription analyzer. Extract medicine information from prescription text.
+    system_prompt = """You are a clinical pharmacist AI. Extract prescription data from images accurately.
+Convert medical abbreviations (BD = twice daily, TDS = thrice daily, QID = four times daily).
+Be thorough and extract ALL visible medicines."""
 
-For each medicine, extract:
-- medicine_name: The name of the medicine
-- dosage: The strength (e.g., "100mg", "500mg")
-- frequency: How often (e.g., "twice daily", "once daily")
-- instructions: Special instructions (e.g., "after meals", "before bed")
+    user_prompt = """Analyze this prescription image and extract ALL medicines.
 
-Return ONLY a valid JSON array. Example:
+For EACH medicine, extract:
+- medicine_name: exact medicine name
+- dosage: strength (e.g., "100mg", "500mg", "1 tablet")
+- frequency: how often (e.g., "once daily", "twice daily", "BD", "TDS")
+- instructions: special instructions (e.g., "after meals", "before bed")
+
+**IMPORTANT: Carefully read the prescription image and extract all visible medicine details.**
+
+Return ONLY valid JSON array:
 [
   {
-    "medicine_name": "Aspirin",
+    "medicine_name": "Medicine Name",
     "dosage": "100mg",
     "frequency": "twice daily",
     "instructions": "take after meals"
   }
 ]
 
-If no medicines found, return: []"""
+If no medicines visible, return: []
+JSON ONLY, no markdown, no other text!"""
 
-    user_prompt = f"""Extract medicines from this prescription:
-
-{prescription_text}
-
-Return JSON array only:"""
-
-    # Format messages
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt}
-    ]
-    
     try:
-        # Apply chat template
-        prompt = _tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True
-        )
-    except:
-        # Fallback
-        prompt = f"{system_prompt}\n\nUser: {user_prompt}\n\nAssistant:"
-    
-    logger.info("Starting LLM generation for prescription analysis...")
-    start_time = time.time()
-    
-    # Run generation in executor
-    response = await asyncio.get_event_loop().run_in_executor(
-        None, _generate, prompt
-    )
-    
-    elapsed = time.time() - start_time
-    logger.info(f"LLM generation completed in {elapsed:.1f}s")
-    
-    if not response:
-        return None
-    
-    # Parse JSON response
-    try:
-        # Clean response
-        cleaned = response.strip()
+        logger.info("📸 Sending image to Gemini Vision API via LangChain...")
         
-        # Remove markdown code blocks if present
+        # Convert image to base64
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+        logger.info(f"📄 Image size: {len(image_bytes)} bytes, base64: {len(image_base64)} chars")
+        
+        # Create multimodal message (matches Con_Code implementation)
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": f"{system_prompt}\n\n{user_prompt}"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{image_base64}"},
+                },
+            ]
+        )
+        
+        # Call Gemini Vision API
+        logger.info("🚀 Invoking Gemini Vision model...")
+        response = await _vision_llm.ainvoke([message])
+        
+        if not response or not response.content:
+            logger.error("❌ Gemini returned empty response")
+            return None
+        
+        response_text = response.content if isinstance(response.content, str) else str(response.content)
+        logger.info(f"✅ Gemini response received: {len(response_text)} chars")
+        logger.info(f"📝 Raw response: {response_text[:300]}...")
+        
+        # Parse JSON
+        cleaned = response_text.strip()
+        
+        # Remove markdown code blocks
         if "```json" in cleaned:
             cleaned = cleaned.split("```json")[1].split("```")[0].strip()
         elif "```" in cleaned:
             cleaned = cleaned.split("```")[1].split("```")[0].strip()
         
-        # Find JSON array
-        start_idx = cleaned.find('[')
-        end_idx = cleaned.rfind(']')
+        # Extract JSON array
+        start = cleaned.find('[')
+        end = cleaned.rfind(']')
         
-        if start_idx == -1 or end_idx == -1:
-            logger.warning("No JSON array found in response")
+        if start == -1 or end == -1:
+            logger.error(f"❌ No JSON array in response: {response_text[:200]}")
             return None
         
-        json_str = cleaned[start_idx:end_idx+1]
+        json_str = cleaned[start:end+1]
         medicines = json.loads(json_str)
         
         if not isinstance(medicines, list):
-            logger.warning("Response is not a list")
+            logger.error("❌ Response is not a list")
             return None
         
-        logger.info(f"Successfully extracted {len(medicines)} medicines")
+        logger.info(f"✅ Successfully extracted {len(medicines)} medicines:")
+        for med in medicines:
+            logger.info(f"  • {med.get('medicine_name')} - {med.get('dosage')} - {med.get('frequency')}")
+        
         return medicines
         
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse JSON: {e}")
-        logger.debug(f"Response was: {response[:200]}")
+        logger.error(f"❌ JSON parse error: {e}")
+        logger.error(f"Response was: {response_text[:500]}")
         return None
     except Exception as e:
-        logger.error(f"Error parsing response: {e}")
-        return None
-
-
-def _generate(prompt: str) -> Optional[str]:
-    """Generate response with model"""
-    global _model, _tokenizer
-    
-    try:
-        # Tokenize
-        inputs = _tokenizer(prompt, return_tensors="pt")
-        input_length = inputs.input_ids.shape[1]
-        
-        # Move to device
-        if hasattr(_model, 'device'):
-            inputs = {k: v.to(_model.device) for k, v in inputs.items()}
-        
-        # Generate
-        logger.info("Generating with model...")
-        outputs = _model.generate(
-            **inputs,
-            max_new_tokens=config.LLM_MAX_TOKENS,
-            temperature=config.LLM_TEMPERATURE,
-            top_p=0.9,
-            do_sample=True,
-            pad_token_id=_tokenizer.eos_token_id
-        )
-        
-        # Decode
-        response = _tokenizer.decode(
-            outputs[0][input_length:],
-            skip_special_tokens=True
-        )
-        
-        logger.info(f"Generated {len(response)} characters")
-        return response
-        
-    except Exception as e:
-        logger.error(f"Generation error: {e}", exc_info=True)
+        logger.error(f"❌ Image analysis error: {e}", exc_info=True)
         return None

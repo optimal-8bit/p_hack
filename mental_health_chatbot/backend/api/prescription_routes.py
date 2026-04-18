@@ -16,7 +16,7 @@ from database.db import (
     update_reminder_dose,
     delete_reminder
 )
-from utils.prescription_llm import extract_medicines_with_llm
+from utils.prescription_llm import extract_medicines_from_image
 import config
 
 logger = logging.getLogger(__name__)
@@ -66,45 +66,62 @@ async def upload_prescription(
     session_id: str = Form(...),
     file: UploadFile = File(...)
 ):
-    """
-    Upload and analyze a prescription image
-    """
+    """Upload prescription image and extract medicines using Gemini Vision API"""
     try:
-        logger.info(f"Received prescription upload for session: {session_id}")
+        logger.info(f"📥 Prescription upload: session={session_id}")
         
-        # Read file
+        # Read image
         contents = await file.read()
-        logger.info(f"File size: {len(contents)} bytes, type: {file.content_type}")
+        logger.info(f"📄 File: {len(contents)} bytes, type={file.content_type}")
         
-        # Validate file size (max 10MB)
+        # Validate
         if len(contents) > 10 * 1024 * 1024:
-            raise HTTPException(status_code=413, detail="File too large. Max 10MB allowed.")
+            raise HTTPException(status_code=413, detail="File too large (max 10MB)")
         
-        # Validate file type
         if not file.content_type or not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="Only image files are allowed.")
+            raise HTTPException(status_code=400, detail="Only images allowed")
         
-        # Extract text using OCR (simplified - you can integrate RapidOCR here)
-        extracted_text = await extract_text_from_image(contents)
-        logger.info(f"Extracted text length: {len(extracted_text)}")
+        # Send image directly to Gemini Vision API
+        logger.info("🚀 Sending image to Gemini Vision API...")
+        medicines_data = await extract_medicines_from_image(contents)
         
-        # Analyze prescription using LLM (simplified - you can integrate your LLM here)
-        medicines = await analyze_prescription_text(extracted_text)
-        logger.info(f"Extracted {len(medicines)} medicines")
+        if not medicines_data or len(medicines_data) == 0:
+            logger.warning("⚠️ Gemini returned no medicines, using fallback")
+            logger.warning("⚠️ This means either: 1) No medicines in image, 2) Gemini API failed, 3) API key issue")
+            medicines = _get_mock_medicines()
+        else:
+            logger.info(f"✅ Gemini extracted {len(medicines_data)} medicines:")
+            for med in medicines_data:
+                logger.info(f"   • {med.get('medicine_name')} - {med.get('dosage')} - {med.get('frequency')}")
+            
+            medicines = []
+            for med_data in medicines_data:
+                frequency = med_data.get("frequency", "").lower()
+                timings = _frequency_to_timings(frequency)
+                
+                medicine = MedicineItem(
+                    medicine_name=med_data.get("medicine_name", "Unknown"),
+                    dosage=med_data.get("dosage", "As prescribed"),
+                    frequency=med_data.get("frequency", "As prescribed"),
+                    instructions=med_data.get("instructions", "Follow doctor's advice"),
+                    timings=timings
+                )
+                medicines.append(medicine)
+                logger.info(f"   → Processed: {medicine.medicine_name} with timings {timings}")
         
         # Save to database
         prescription_id = await save_prescription_analysis(
             session_id=session_id,
-            extracted_text=extracted_text,
+            extracted_text=f"Analyzed by Gemini Vision API - {len(medicines)} medicines found",
             medicines=[m.dict() for m in medicines],
             filename=file.filename
         )
         
-        logger.info(f"Saved prescription analysis with ID: {prescription_id}")
+        logger.info(f"💾 Saved prescription: {prescription_id}")
         
         return PrescriptionAnalysisResponse(
             prescription_id=prescription_id,
-            extracted_text=extracted_text,
+            extracted_text=f"Analyzed by Gemini Vision API",
             medicines=medicines,
             notes="Prescription analyzed successfully. Please verify all details.",
             created_at=datetime.utcnow().isoformat()
@@ -113,8 +130,8 @@ async def upload_prescription(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error uploading prescription: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to process prescription: {str(e)}")
+        logger.error(f"❌ Upload failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process: {str(e)}")
 
 
 @router.get("/list/{session_id}")
@@ -214,106 +231,6 @@ async def delete_reminder_endpoint(reminder_id: str):
 
 
 # Helper functions
-
-async def extract_text_from_image(image_bytes: bytes) -> str:
-    """
-    Extract text from image using OCR
-    """
-    logger.info("Starting OCR text extraction...")
-    
-    # Try to use RapidOCR if available
-    try:
-        from rapidocr_onnxruntime import RapidOCR
-        from PIL import Image
-        import numpy as np
-        from io import BytesIO
-        
-        logger.info("Using RapidOCR for text extraction")
-        image = Image.open(BytesIO(image_bytes)).convert("RGB")
-        image_array = np.array(image)
-        
-        engine = RapidOCR()
-        result, _ = engine(image_array)
-        
-        if not result:
-            logger.warning("RapidOCR found no text in image")
-            return _get_mock_prescription_text()
-        
-        lines = [item[1] for item in result if len(item) >= 2 and isinstance(item[1], str)]
-        extracted_text = "\n".join(lines).strip()
-        
-        if not extracted_text:
-            logger.warning("RapidOCR extracted empty text")
-            return _get_mock_prescription_text()
-        
-        logger.info(f"RapidOCR extracted {len(extracted_text)} characters")
-        return extracted_text
-        
-    except ImportError:
-        logger.info("RapidOCR not available, using mock text")
-        logger.info("Install with: pip install rapidocr-onnxruntime pillow numpy")
-        return _get_mock_prescription_text()
-    except Exception as e:
-        logger.error(f"OCR error: {e}", exc_info=True)
-        return _get_mock_prescription_text()
-
-
-def _get_mock_prescription_text() -> str:
-    """Return mock prescription text for testing"""
-    logger.info("Using mock prescription text")
-    return """
-    Dr. Smith Medical Center
-    Patient: John Doe
-    Date: 2024-01-15
-    
-    Rx:
-    1. Aspirin 100mg - Take 1 tablet twice daily after meals
-    2. Vitamin D 1000 IU - Take 1 capsule once daily in morning
-    3. Metformin 500mg - Take 1 tablet three times daily before meals
-    
-    Follow-up: 2 weeks
-    Dr. Sarah Smith, MD
-    """
-
-
-async def analyze_prescription_text(text: str) -> List[MedicineItem]:
-    """
-    Analyze prescription text and extract medicines using LLM
-    """
-    logger.info("Starting prescription analysis...")
-    
-    # Try LLM extraction first
-    if config.LLM_ENABLED:
-        logger.info("Attempting LLM-based extraction...")
-        medicines_data = await extract_medicines_with_llm(text)
-        
-        if medicines_data and isinstance(medicines_data, list) and len(medicines_data) > 0:
-            logger.info(f"LLM extracted {len(medicines_data)} medicines")
-            
-            # Convert to MedicineItem objects
-            medicines = []
-            for med_data in medicines_data:
-                # Determine timings based on frequency
-                frequency = med_data.get("frequency", "").lower()
-                timings = _frequency_to_timings(frequency)
-                
-                medicine = MedicineItem(
-                    medicine_name=med_data.get("medicine_name", "Unknown"),
-                    dosage=med_data.get("dosage", "As prescribed"),
-                    frequency=med_data.get("frequency", "As prescribed"),
-                    instructions=med_data.get("instructions", "Follow doctor's advice"),
-                    timings=timings
-                )
-                medicines.append(medicine)
-            
-            return medicines
-        else:
-            logger.warning("LLM extraction failed or returned no medicines")
-    
-    # Fallback to mock data
-    logger.info("Using mock medicine data as fallback")
-    return _get_mock_medicines()
-
 
 def _frequency_to_timings(frequency: str) -> List[str]:
     """Convert frequency text to suggested timings"""
