@@ -17,56 +17,66 @@ _model = None
 _model_loaded = False
 _load_error = None
 
-# Strict system prompt - NO reasoning allowed
-SYSTEM_PROMPT = """You are a mental health support assistant language formatter.
-
-You are NOT allowed to think, reason, analyze, or generate new ideas.
+# Expert Therapist System Prompt
+SYSTEM_PROMPT = """You are an expert licensed therapist and psychiatrist with extensive training in cognitive behavioral therapy (CBT), dialectical behavior therapy (DBT), psychodynamic therapy, and trauma-informed care.
 
 You will receive structured data containing:
 - emotion
 - intent
 - context
 - response_plan
+- user_input
 
-Your ONLY job is to convert the response_plan into a natural, human-like message.
+Your role is to provide professional therapeutic responses that:
 
-CRITICAL RULES:
-- You MUST use ONLY the text provided inside response_plan
-- You MUST NOT add any new advice, suggestions, or concepts
-- You MUST NOT introduce new sentences beyond response_plan content
-- You MUST NOT change the meaning of any field
-- You MUST NOT hallucinate context or emotions
+THERAPEUTIC APPROACH:
+- Use evidence-based therapeutic techniques (CBT, DBT, mindfulness, etc.)
+- Provide psychoeducation when appropriate
+- Help clients identify thought patterns, emotions, and behaviors
+- Guide clients toward self-discovery and insight
+- Offer practical coping strategies and interventions
+- Validate emotions while challenging unhelpful thinking patterns
 
-STRUCTURE RULES:
-- Combine the fields in this order:
-  1. validation
-  2. reflection
-  3. coping (if exists)
-  4. question
+PROFESSIONAL STANDARDS:
+- Maintain therapeutic boundaries and ethics
+- Use person-centered, non-judgmental language
+- Demonstrate empathy, genuineness, and unconditional positive regard
+- Ask thoughtful, open-ended questions to promote reflection
+- Normalize experiences while encouraging growth
+- Provide hope and instill confidence in the client's ability to heal
 
-STYLE RULES:
-- Keep response between 3–4 sentences
-- Use a warm, empathetic tone
-- Use soft language (e.g., "it feels like", "it sounds like")
-- Keep it natural and conversational
+RESPONSE STRUCTURE:
+1. Emotional validation and reflection
+2. Therapeutic insight or reframe
+3. Practical intervention or coping strategy
+4. Exploratory question to deepen understanding
 
-If response_plan is incomplete:
-- gracefully connect available parts
-- do NOT invent missing parts
+STYLE GUIDELINES:
+- Use professional yet warm and accessible language
+- Incorporate therapeutic terminology naturally
+- Respond with 4-6 sentences for depth
+- Balance support with gentle challenge
+- Focus on strengths and resilience
 
-Output ONLY the final message text."""
+SAFETY CONSIDERATIONS:
+- Recognize signs of crisis and respond appropriately
+- Encourage professional help when needed
+- Avoid diagnosis but acknowledge symptoms
+- Maintain hope while being realistic
 
-# Response validation - prevent harmful outputs
+Generate a therapeutic response that demonstrates your expertise while being genuinely helpful and healing."""
+
+# Professional therapeutic response validation
 BANNED_PHRASES = [
-    "diagnosed", "you have", "you should definitely", "i recommend", 
-    "you need to", "medical advice", "professional diagnosis",
-    "therapy is required", "see a doctor immediately", "mental illness",
-    "disorder", "condition", "treatment plan", "medication"
+    "i diagnose you", "you definitely have", "you are mentally ill", 
+    "take this medication", "stop taking medication", "you don't need therapy",
+    "just get over it", "it's all in your head", "you're overreacting"
 ]
 
-REQUIRED_SOFTENERS = [
-    "it sounds like", "it seems like", "it feels like", "i sense",
-    "from what you're sharing", "it appears", "i get the sense"
+REQUIRED_THERAPEUTIC_ELEMENTS = [
+    "validation", "reflection", "insight", "coping", "exploration",
+    "it sounds like", "i hear that", "that makes sense", "i understand",
+    "what do you think", "how does that feel", "tell me more about"
 ]
 
 
@@ -104,10 +114,27 @@ class GeminiGenerator:
             logger.debug("Gemini API key not set, using fallback")
             return None
         
-        # Validate response_plan exists and has content
+        # Validate payload has required therapeutic data
+        # Check for either new intervention_plan or old response_plan format
+        intervention_plan = llm_payload.get("intervention_plan", {})
         response_plan = llm_payload.get("response_plan", {})
-        if not response_plan.get("validation"):
-            logger.warning("Invalid or empty response_plan, using fallback")
+        
+        # Debug logging
+        logger.info(f"🔍 Payload validation - has intervention_plan: {bool(intervention_plan)}, has response_plan: {bool(response_plan)}")
+        if intervention_plan:
+            logger.info(f"   Intervention plan keys: {list(intervention_plan.keys())}")
+        if response_plan:
+            logger.info(f"   Response plan keys: {list(response_plan.keys())}")
+        
+        # Need either intervention_plan or response_plan with content
+        has_intervention = bool(intervention_plan.get("validation") or intervention_plan.get("psychoeducation"))
+        has_response_plan = bool(response_plan.get("validation"))
+        
+        logger.info(f"   has_intervention: {has_intervention}, has_response_plan: {has_response_plan}")
+        
+        if not (has_intervention or has_response_plan):
+            logger.warning("Invalid or empty therapeutic plan, using fallback")
+            logger.warning(f"   Payload keys: {list(llm_payload.keys())}")
             return None
         
         try:
@@ -235,28 +262,90 @@ class GeminiGenerator:
         return response
     
     def _build_prompt(self, llm_payload: Dict) -> str:
-        """Build user prompt from payload"""
+        """Build therapeutic prompt from payload"""
+        # Support both new intervention_plan and old response_plan formats
+        intervention_plan = llm_payload.get("intervention_plan", {})
         response_plan = llm_payload.get("response_plan", {})
-        decision = llm_payload.get("decision_engine", {})
+        therapeutic_strategy = llm_payload.get("therapeutic_strategy", {})
+        session_info = llm_payload.get("session_info", {})
+        multimodal_data = llm_payload.get("multimodal_data", {})
         constraints = llm_payload.get("constraints", {})
+        user_input = llm_payload.get("user_input", "")
+        emotion = llm_payload.get("emotion", "")
+        intent = llm_payload.get("intent", "")
+        context = llm_payload.get("context", {})
         
-        return f"""You are given structured data.
+        # Build context summary
+        context_summary = ""
+        if isinstance(context, dict):
+            recent_messages = context.get("recent_messages", [])
+            if recent_messages:
+                context_summary = "Recent conversation:\n"
+                for msg in recent_messages:
+                    context_summary += f"  - {msg}\n"
+        elif isinstance(context, list) and context:
+            recent_context = context[-3:]  # Last 3 turns
+            context_summary = "Recent conversation context:\n"
+            for i, turn in enumerate(recent_context):
+                turn_dict = turn if isinstance(turn, dict) else turn.__dict__
+                context_summary += f"Turn {turn_dict.get('turn_number', i+1)}: User expressed {turn_dict.get('emotion', 'unknown')} about {turn_dict.get('intent', 'general topic')}\n"
+        
+        # Build multimodal information
+        multimodal_info = ""
+        if multimodal_data and multimodal_data.get("has_facial_emotion"):
+            facial_emotion = multimodal_data.get("facial_emotion")
+            facial_confidence = multimodal_data.get("facial_confidence", 0)
+            age = multimodal_data.get("age")
+            gender = multimodal_data.get("gender")
+            
+            multimodal_info = f"""
+MULTIMODAL INPUT DETECTED:
+- Text emotion: {emotion}
+- Facial emotion (from video): {facial_emotion} (confidence: {facial_confidence:.2f})
+- Client demographics: Age ~{age}, Gender: {gender}
 
-IMPORTANT:
-- Only use response_plan fields to generate the response.
-- Do NOT use other fields to invent new content.
+IMPORTANT: The client's facial expression shows {facial_emotion}, which may differ from their text.
+This could indicate:
+- Emotional incongruence (saying one thing, feeling another)
+- Difficulty expressing emotions verbally
+- Suppression or masking of true feelings
 
-RESPONSE PLAN:
-validation: {response_plan.get("validation", "")}
-reflection: {response_plan.get("reflection", "")}
-coping: {response_plan.get("coping", "")}
-question: {response_plan.get("question", "")}
+Address this therapeutically if there's a mismatch between text and facial emotion.
+"""
+        
+        # Get therapeutic approach info
+        modality = therapeutic_strategy.get("primary_modality", "Person_Centered")
+        techniques = therapeutic_strategy.get("techniques", [])
+        session_stage = session_info.get("session_stage", "initial_assessment")
+        
+        return f"""You are providing therapy to a client. Here is the session information:
 
-CONSTRAINTS:
-- max_sentences: {constraints.get("max_sentences", 4)}
-- tone: {decision.get("tone", "warm and empathetic")}
+CLIENT INPUT: "{user_input}"
 
-Generate the final response strictly following the rules."""
+EMOTIONAL STATE: {emotion}
+THERAPEUTIC NEED: {intent}
+
+{multimodal_info}
+
+{context_summary}
+
+THERAPEUTIC FRAMEWORK:
+- Current emotion: {emotion}
+- Therapeutic focus: {intent}
+- Primary modality: {modality}
+- Recommended techniques: {', '.join(techniques) if techniques else 'supportive exploration'}
+- Session stage: {session_stage}
+
+RESPONSE GUIDELINES:
+- Provide professional therapeutic intervention using {modality} approach
+- Use evidence-based techniques appropriate for {emotion} and {intent}
+- Maintain therapeutic boundaries while being warm and supportive
+- Include validation, insight, and practical guidance
+- Ask a therapeutic question to deepen exploration
+- Response length: {constraints.get("max_sentences", 6)} sentences maximum
+{f"- IMPORTANT: Address the emotional incongruence between text and facial expression" if multimodal_data and multimodal_data.get("has_facial_emotion") and multimodal_data.get("facial_emotion") != emotion else ""}
+
+Generate a therapeutic response that demonstrates professional expertise while being genuinely helpful."""
     
     def _run_generation(self, prompt: str) -> str:
         """Run model generation (in executor)"""
@@ -325,9 +414,9 @@ Generate the final response strictly following the rules."""
         return response
     
     def _validate_response(self, response: str) -> bool:
-        """Validate Gemini response for safety and compliance"""
+        """Validate therapeutic response for safety and professional standards"""
         if not response or len(response.strip()) == 0:
-            logger.warning("Empty Gemini response")
+            logger.warning("Empty therapeutic response")
             return False
         
         response_lower = response.lower()
@@ -335,34 +424,34 @@ Generate the final response strictly following the rules."""
         # Check for banned phrases
         for phrase in BANNED_PHRASES:
             if phrase in response_lower:
-                logger.warning(f"Gemini response contains banned phrase: {phrase}")
+                logger.warning(f"Therapeutic response contains inappropriate phrase: {phrase}")
                 return False
         
-        # Check response length (allow 5-250 words)
+        # Check response length (allow 10-400 words for therapeutic depth)
         word_count = len(response.split())
-        if word_count < 5 or word_count > 250:
-            logger.warning(f"Gemini response length inappropriate: {word_count} words")
+        if word_count < 10 or word_count > 400:
+            logger.warning(f"Therapeutic response length inappropriate: {word_count} words")
             return False
         
-        # Check sentence count (should be 3-5 sentences max)
+        # Check sentence count (should be 3-8 sentences for therapeutic responses)
         sentence_count = len([s for s in response.split('.') if s.strip()])
-        if sentence_count > 5:
-            logger.warning(f"Too many sentences from Gemini: {sentence_count}")
+        if sentence_count > 8:
+            logger.warning(f"Too many sentences in therapeutic response: {sentence_count}")
             return False
         
-        # Check for repetition (at least 60% unique words)
-        words = response_lower.split()
-        if len(words) > 5:  # Only check if response has enough words
-            unique_ratio = len(set(words)) / len(words)
-            if unique_ratio < 0.6:
-                logger.warning(f"Repetitive response detected: {unique_ratio:.2f} unique ratio")
-                return False
+        # Check for therapeutic elements (at least one should be present)
+        has_therapeutic_element = any(element in response_lower for element in REQUIRED_THERAPEUTIC_ELEMENTS)
+        if not has_therapeutic_element:
+            logger.warning("Therapeutic response lacks professional therapeutic elements")
+            return False
         
-        # Check for appropriate softening (at least one softener for emotional content)
-        has_softener = any(softener in response_lower for softener in REQUIRED_SOFTENERS)
-        if not has_softener and any(word in response_lower for word in ["feel", "emotion", "difficult", "hard"]):
-            logger.debug("Gemini response lacks softening but may be acceptable")
-            # Don't reject, just log
+        # Check for repetition (at least 70% unique words for professional quality)
+        words = response_lower.split()
+        if len(words) > 10:  # Only check if response has enough words
+            unique_ratio = len(set(words)) / len(words)
+            if unique_ratio < 0.7:
+                logger.warning(f"Repetitive therapeutic response detected: {unique_ratio:.2f} unique ratio")
+                return False
         
         return True
     

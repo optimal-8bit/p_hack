@@ -33,14 +33,11 @@ async def chat(request: ChatRequest):
     try:
         orchestrator = get_orchestrator()
         
-        # Process message through pipeline
-        response = await orchestrator.process_message(
-            session_id=request.session_id,
-            user_message=request.message
-        )
+        # Pre-process facial emotion if provided
+        override_emotion = None
+        override_confidence = None
+        facial_emotion_data = None
         
-        # If facial emotion data is provided, fuse it with text emotion
-        fusion_result = None
         if request.facial_emotion:
             logger.info(
                 f"📹 [EMOTION-FUSION] Received facial emotion data: "
@@ -50,6 +47,31 @@ async def chat(request: ChatRequest):
                 f"gender={request.facial_emotion.gender}"
             )
             
+            # Store facial emotion data for later use
+            facial_emotion_data = {
+                "dominant_emotion": request.facial_emotion.dominant_emotion,
+                "confidence": request.facial_emotion.confidence,
+                "age": request.facial_emotion.age,
+                "gender": request.facial_emotion.gender,
+                "all_emotions": request.facial_emotion.all_emotions
+            }
+            
+            # Use facial emotion as override (will be fused in orchestrator)
+            override_emotion = request.facial_emotion.dominant_emotion
+            override_confidence = request.facial_emotion.confidence
+        
+        # Process message through pipeline with facial emotion override
+        response = await orchestrator.process_message(
+            session_id=request.session_id,
+            user_message=request.message,
+            override_emotion=override_emotion,
+            override_confidence=override_confidence,
+            facial_emotion_data=facial_emotion_data  # Pass full facial data
+        )
+        
+        # If facial emotion was provided, perform fusion for response metadata
+        fusion_result = None
+        if request.facial_emotion:
             fusion_result = fuse_emotions(
                 text_emotion=response.emotion,
                 text_confidence=response.emotion_confidence,
@@ -65,10 +87,6 @@ async def chat(request: ChatRequest):
                 f"fused_emotion={fusion_result['fused_emotion']}({fusion_result['fused_confidence']:.3f}), "
                 f"congruence={fusion_result.get('congruence')}"
             )
-            
-            # Update response with fused emotion
-            response.emotion = fusion_result["fused_emotion"]
-            response.emotion_confidence = fusion_result["fused_confidence"]
             
             # Log incongruence if detected
             if fusion_result.get("congruence") == "incongruent":

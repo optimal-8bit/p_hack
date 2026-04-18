@@ -2,7 +2,7 @@ import logging
 import time
 import asyncio
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict
 
 from pipeline.safety import get_safety_checker
 from pipeline.preprocessor import get_preprocessor
@@ -51,15 +51,17 @@ class ChatOrchestrator:
         session_id: str,
         user_message: str,
         override_emotion: Optional[str] = None,
-        override_confidence: Optional[float] = None
+        override_confidence: Optional[float] = None,
+        facial_emotion_data: Optional[Dict] = None
     ) -> ChatResponse:
         """Process user message through the full pipeline
         
         Args:
             session_id: Session identifier
             user_message: User's message text
-            override_emotion: Optional emotion to use instead of classification (for voice pipeline)
+            override_emotion: Optional emotion to use instead of classification (for multimodal input)
             override_confidence: Optional confidence to use with override_emotion
+            facial_emotion_data: Optional facial emotion data (video/image analysis)
         """
         start_time = time.time()
         
@@ -209,7 +211,8 @@ class ChatOrchestrator:
                     turn_number=turn_number,
                     context=context,
                     response_components=response_components,
-                    allow_therapist=response_components.get('allow_therapist', False)
+                    allow_therapist=response_components.get('allow_therapist', False),
+                    facial_emotion_data=facial_emotion_data  # Pass facial emotion data
                 )
                 
                 # Try Gemini generation with fallback
