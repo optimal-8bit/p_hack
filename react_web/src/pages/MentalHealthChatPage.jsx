@@ -158,6 +158,7 @@ export default function MentalHealthChatPage() {
   const handleVoiceResult = (voiceData) => {
     // Voice pipeline returns full analysis
     console.log('Voice analysis:', voiceData)
+    console.log('Is crisis?', voiceData.chat_result?.is_crisis)
     
     // Add user message with voice indicator
     const userMessage = {
@@ -168,6 +169,9 @@ export default function MentalHealthChatPage() {
       voiceData: voiceData, // Store voice analysis
     }
     
+    // Check if this is a crisis response
+    const isCrisis = voiceData.chat_result?.is_crisis || false
+    
     // Add bot response from voice pipeline
     const botMessage = {
       id: createMessageId(),
@@ -175,8 +179,9 @@ export default function MentalHealthChatPage() {
       content: voiceData.chat_result?.response_text || 'Processing your message...',
       timestamp: new Date().toISOString(),
       streaming: false,
-      isCrisis: voiceData.chat_result?.is_crisis || false,
-      voiceAnalysis: {
+      isCrisis: isCrisis,
+      // Only show voice analysis if NOT a crisis
+      voiceAnalysis: isCrisis ? null : {
         fusedEmotion: voiceData.fused_emotion,
         fusedConfidence: voiceData.fused_confidence,
         textEmotion: voiceData.text_only_emotion,
@@ -186,6 +191,8 @@ export default function MentalHealthChatPage() {
         stressedWords: voiceData.stressed_words,
       }
     }
+    
+    console.log('Bot message:', botMessage)
     
     setMessages((prev) => [...prev, userMessage, botMessage])
     

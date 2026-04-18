@@ -94,11 +94,14 @@ class VoicePipeline:
             if safety_result.is_crisis:
                 logger.warning(f"Crisis detected in voice message: {safety_result.crisis_type}")
                 # Return crisis response with empty word analysis
-                return self._create_crisis_response(
+                crisis_response = self._create_crisis_response(
                     safety_result.response,
                     transcription_result,
                     transcription_time
                 )
+                logger.info(f"Returning crisis response with message: {crisis_response.chat_result.response_text[:100]}...")
+                logger.info(f"Crisis flag set: {crisis_response.chat_result.is_crisis}")
+                return crisis_response
             
             # Step 4: Analyze audio features
             logger.info("Analyzing audio features")
@@ -253,6 +256,38 @@ class VoicePipeline:
         transcription_time: float
     ) -> VoiceChatResponse:
         """Create crisis response"""
+        # Create a mock chat result with crisis response
+        # This matches the ChatResponse dataclass from orchestrator
+        from dataclasses import dataclass
+        
+        @dataclass
+        class CrisisChatResult:
+            response_text: str
+            detected_language: str
+            emotion: str
+            emotion_confidence: float
+            intent: str
+            intent_confidence: float
+            turn_number: int
+            is_crisis: bool
+            processing_time_ms: float
+            session_id: str
+        
+        crisis_chat_result = CrisisChatResult(
+            response_text=crisis_message,
+            detected_language=transcription_result.language,
+            emotion="fear",
+            emotion_confidence=1.0,
+            intent="anxiety and panic",
+            intent_confidence=1.0,
+            turn_number=1,
+            is_crisis=True,  # THIS IS THE KEY FLAG
+            processing_time_ms=transcription_time,
+            session_id="crisis"
+        )
+        
+        logger.info(f"Created crisis chat result with is_crisis={crisis_chat_result.is_crisis}")
+        
         return VoiceChatResponse(
             transcript=transcription_result.text,
             detected_language=transcription_result.language,
@@ -272,7 +307,7 @@ class VoicePipeline:
             incongruence_note="",
             word_analysis=[],
             stressed_words=[],
-            chat_result=None
+            chat_result=crisis_chat_result
         )
 
 
