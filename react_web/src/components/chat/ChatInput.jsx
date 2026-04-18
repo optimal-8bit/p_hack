@@ -3,8 +3,10 @@ import PropTypes from 'prop-types'
 import { Plus, Mic, X, FileText, Film, Music, FileSpreadsheet, Presentation, Archive, File } from 'lucide-react'
 import UploadMenu from './UploadMenu'
 import AudioRecorder from './AudioRecorder'
+import VoiceInput from './VoiceInput'
 import Toast from '../Toast'
 import { getFileInfo } from '../../utils/fileTypeDetector'
+import './VoiceInput.css'
 
 // Get appropriate icon for file type
 const getFileIcon = (fileType) => {
@@ -22,17 +24,18 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
   const [input, setInput] = useState('')
   const [isUploadMenuOpen, setIsUploadMenuOpen] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [isVoiceInput, setIsVoiceInput] = useState(false)
   const [toastFileInfo, setToastFileInfo] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
   const [filePreviewUrl, setFilePreviewUrl] = useState(null)
   const textareaRef = useRef(null)
 
   useEffect(() => {
-    if (textareaRef.current && !isRecording) {
+    if (textareaRef.current && !isRecording && !isVoiceInput) {
       textareaRef.current.style.height = 'auto'
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
     }
-  }, [input, isRecording])
+  }, [input, isRecording, isVoiceInput])
 
   // Create preview URL for images
   useEffect(() => {
@@ -132,6 +135,24 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
     setIsUploadMenuOpen(false)
   }
 
+  const handleStartVoiceInput = () => {
+    setIsVoiceInput(true)
+    setIsUploadMenuOpen(false)
+  }
+
+  const handleVoiceTranscript = (transcript) => {
+    setInput(transcript)
+    setIsVoiceInput(false)
+    // Focus on textarea after voice input
+    setTimeout(() => {
+      textareaRef.current?.focus()
+    }, 100)
+  }
+
+  const handleCloseVoiceInput = () => {
+    setIsVoiceInput(false)
+  }
+
   const handleCloseToast = () => {
     setToastFileInfo(null)
   }
@@ -147,7 +168,9 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
 
       <div className={`chat-input-wrapper ${hasMessages ? 'with-messages' : 'centered'}`}>
         <form onSubmit={handleSubmit} className="chat-input-form">
-          {isRecording ? (
+          {isVoiceInput ? (
+            <VoiceInput onTranscript={handleVoiceTranscript} onClose={handleCloseVoiceInput} />
+          ) : isRecording ? (
             <AudioRecorder onSendAudio={handleSendAudio} onCancel={handleCancelRecording} />
           ) : (
             <div className="input-container">
@@ -224,13 +247,18 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
                 />
               </div>
 
-              {/* Mic button */}
+              {/* Mic button - Long press for recording, click for voice input */}
               <button
                 type="button"
-                onClick={handleStartRecording}
+                onClick={handleStartVoiceInput}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  handleStartRecording()
+                }}
                 className="input-icon-button"
-                aria-label="Voice input"
+                aria-label="Voice input (right-click for audio recording)"
                 disabled={disabled}
+                title="Click for voice-to-text, right-click for audio recording"
               >
                 <Mic size={20} />
               </button>
@@ -261,9 +289,9 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
             </div>
           )}
         </form>
-        {!hasMessages && !isRecording && (
+        {/* {!hasMessages && !isRecording && !isVoiceInput && (
           <p className="input-hint">Press Enter to send, Shift+Enter for new line</p>
-        )}
+        )} */}
       </div>
     </>
   )

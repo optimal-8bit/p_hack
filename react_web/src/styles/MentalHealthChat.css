@@ -107,6 +107,30 @@
   padding: 0.5rem 0;
 }
 
+/* Health Section */
+.health-section {
+  padding: 0.5rem 1rem 1rem;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.health-section .section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  color: #888;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.health-section .section-header h3 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .recents-section::-webkit-scrollbar {
   width: 6px;
 }

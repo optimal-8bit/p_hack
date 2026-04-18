@@ -70,6 +70,7 @@ export default function MentalHealthChatPage() {
       content: '',
       timestamp: new Date().toISOString(),
       streaming: true,
+      isCrisis: false, // Will be updated when response arrives
     }
 
     setMessages((prev) => [...prev, userMessage, botMessage])
@@ -105,10 +106,16 @@ export default function MentalHealthChatPage() {
             )
           )
         },
-        onDone: () => {
+        onDone: (result) => {
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === botMessage.id ? { ...msg, streaming: false } : msg
+              msg.id === botMessage.id 
+                ? { 
+                    ...msg, 
+                    streaming: false,
+                    isCrisis: result?.metadata?.isCrisis || false 
+                  } 
+                : msg
             )
           )
           setIsTyping(false)
@@ -209,6 +216,7 @@ export default function MentalHealthChatPage() {
                     content={message.content}
                     streaming={message.streaming}
                     error={message.error}
+                    isCrisis={message.isCrisis}
                   />
                 ))}
                 {isTyping && <TypingIndicator />}

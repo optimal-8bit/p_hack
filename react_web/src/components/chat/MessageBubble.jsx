@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
+import EmergencyBubble from './EmergencyBubble'
 
-export default function MessageBubble({ role, content, streaming, error }) {
+export default function MessageBubble({ role, content, streaming, error, isCrisis }) {
   const [displayedContent, setDisplayedContent] = useState('')
 
   useEffect(() => {
@@ -13,6 +14,11 @@ export default function MessageBubble({ role, content, streaming, error }) {
       setDisplayedContent(content)
     }
   }, [content, streaming, role])
+
+  // If this is a crisis message from the bot, use EmergencyBubble
+  if (role === 'bot' && isCrisis) {
+    return <EmergencyBubble content={displayedContent} streaming={streaming} />
+  }
 
   const formattedContent = displayedContent.split('\n').map((line, idx) => (
     <span key={idx}>
@@ -40,9 +46,11 @@ MessageBubble.propTypes = {
   content: PropTypes.string.isRequired,
   streaming: PropTypes.bool,
   error: PropTypes.bool,
+  isCrisis: PropTypes.bool,
 }
 
 MessageBubble.defaultProps = {
   streaming: false,
   error: false,
+  isCrisis: false,
 }

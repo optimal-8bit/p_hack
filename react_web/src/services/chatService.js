@@ -1,28 +1,29 @@
-import { apiClient } from '../lib/apiClient'
 import { getMockResponse, simulateStreaming } from '../mock/mockResponses'
 
-const CHAT_STREAM_PATH = import.meta.env.VITE_CHAT_STREAM_PATH || '/chat/stream'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || false
 
-function buildFormData({ messages, files, metadata }) {
-  const formData = new FormData()
-  formData.append('messages', JSON.stringify(messages))
-
-  if (metadata) {
-    formData.append('metadata', JSON.stringify(metadata))
+// Generate a session ID (stored in sessionStorage for persistence across page reloads)
+function getSessionId() {
+  let sessionId = sessionStorage.getItem('mental_health_session_id')
+  if (!sessionId) {
+    sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    sessionStorage.setItem('mental_health_session_id', sessionId)
   }
+  return sessionId
+}
 
-  if (files?.length) {
-    for (const file of files) {
-      formData.append('files', file)
-    }
+// Simulate streaming by yielding characters from the full response
+async function simulateStreamingFromResponse(text, signal, onToken, delay = 20) {
+  for (let i = 0; i < text.length; i++) {
+    if (signal?.aborted) throw new Error('Aborted')
+    await new Promise(resolve => setTimeout(resolve, delay))
+    onToken(text[i])
   }
-
-  return formData
 }
 
 export const chatService = {
-  async streamReply({ messages, files = [], metadata, signal, onToken, onDone, onError }) {
+  async streamReply({ messages, signal, onToken, onDone, onError }) {
     // Check if we should use mock responses
     if (USE_MOCK) {
       try {
@@ -55,34 +56,137 @@ export const chatService = {
       }
     }
 
-    // Use real backend API
-    const body = buildFormData({ messages, files, metadata })
-
+    // Use real Mental Health Chatbot backend API
     try {
-      await apiClient.stream(CHAT_STREAM_PATH, {
+      // Get the last user message
+      const lastUserMessage = messages[messages.length - 1]?.content || ''
+      
+      if (!lastUserMessage.trim()) {
+        throw new Error('Message cannot be empty')
+      }
+
+      // Call the backend API
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: 'POST',
-        body,
-        signal,
-        onMessage: (chunk) => {
-          if (chunk?.error) {
-            throw new Error(chunk.error)
-          }
-
-          const token = chunk?.delta || chunk?.token || chunk?.content || chunk?.text || ''
-          if (token) {
-            onToken?.(token)
-          }
-
-          if (chunk?.done === true) {
-            onDone?.(chunk)
-          }
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          session_id: getSessionId(),
+          message: lastUserMessage
+        }),
+        signal
       })
 
-      onDone?.({ done: true })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Simulate streaming the response text character by character
+      // This provides a nice typewriter effect even though the backend returns the full response
+      await simulateStreamingFromResponse(
+        data.response_text,
+        signal,
+        onToken,
+        20 // 20ms per character
+      )
+
+      // Call onDone with metadata from the backend
+      onDone?.({
+        done: true,
+        metadata: {
+          emotion: data.emotion?.emotion,
+          emotionConfidence: data.emotion?.confidence,
+          intent: data.intent?.intent,
+          intentConfidence: data.intent?.confidence,
+          language: data.detected_language,
+          isCrisis: data.is_crisis,
+          processingTime: data.processing_time_ms,
+          turnNumber: data.turn_number
+        }
+      })
+
     } catch (error) {
+      if (error.name === 'AbortError' || error.message === 'Aborted') {
+        return
+      }
+      console.error('Chat service error:', error)
       onError?.(error)
       throw error
     }
   },
+
+  // Get session history
+  async getHistory() {
+    try {
+      const sessionId = getSessionId()
+      const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}/history`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching history:', error)
+      throw error
+    }
+  },
+
+  // Clear session
+  async clearSession() {
+    try {
+      const sessionId = getSessionId()
+      const response = await fetch(`${API_BASE_URL}/api/session/${sessionId}`, {
+        method: 'DELETE'
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      // Generate new session ID
+      sessionStorage.removeItem('mental_health_session_id')
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error clearing session:', error)
+      throw error
+    }
+  },
+
+  // Get health status
+  async getHealth() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching health:', error)
+      throw error
+    }
+  },
+
+  // Get supported languages
+  async getSupportedLanguages() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/supported-languages`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      return await response.json()
+    } catch (error) {
+      console.error('Error fetching languages:', error)
+      throw error
+    }
+  }
 }

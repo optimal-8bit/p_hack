@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import ChatHistoryItem from './ChatHistoryItem'
 import UserProfileSection from './UserProfileSection'
+import HealthStatus from './HealthStatus'
 import { apiClient } from '../../lib/apiClient'
 
 export default function Sidebar({ activeChat, onChatSelect, onNewChat }) {
@@ -84,6 +85,14 @@ export default function Sidebar({ activeChat, onChatSelect, onNewChat }) {
               </svg>
               <span>New Chat</span>
             </button>
+          </div>
+
+          {/* Backend Health Status */}
+          <div className="health-section">
+            <div className="section-header">
+              <h3>Backend Status</h3>
+            </div>
+            <HealthStatus />
           </div>
 
           {/* Recents Section */}

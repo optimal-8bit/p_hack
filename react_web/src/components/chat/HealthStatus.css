@@ -1,0 +1,120 @@
+.health-status {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.health-loading {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.health-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.health-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-indicator[data-status="healthy"] {
+  background: #4caf50;
+  box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+}
+
+.status-indicator[data-status="degraded"] {
+  background: #ff9800;
+  box-shadow: 0 0 8px rgba(255, 152, 0, 0.6);
+}
+
+.status-indicator[data-status="unhealthy"],
+.status-indicator.error {
+  background: #f44336;
+  box-shadow: 0 0 8px rgba(244, 67, 54, 0.6);
+}
+
+.status-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.status-detail {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+}
+
+.models-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.model-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.model-name {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.model-status {
+  font-weight: 600;
+}
+
+.model-status.loaded {
+  color: #4caf50;
+}
+
+.model-status.not-loaded {
+  color: #f44336;
+}
+
+.refresh-btn {
+  width: 100%;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.refresh-btn:active {
+  transform: scale(0.98);
+}
