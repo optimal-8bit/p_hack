@@ -5,7 +5,9 @@ import MessageBubble from '../components/chat/MessageBubble'
 import ChatInput from '../components/chat/ChatInput'
 import TypingIndicator from '../components/chat/TypingIndicator'
 import LightRays from '../components/LightRays'
+import VideoBackground from '../components/VideoBackground'
 import { chatService } from '../services/chatService'
+import { getRandomVideo } from '../utils/videoHelper'
 import '../styles/MentalHealthChat.css'
 
 function createMessageId() {
@@ -17,6 +19,9 @@ export default function MentalHealthChatPage() {
   const [isTyping, setIsTyping] = useState(false)
   const [inputDisabled, setInputDisabled] = useState(false)
   const [activeChat, setActiveChat] = useState(null)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [currentVideo, setCurrentVideo] = useState(null)
+  const [keepVideoPlaying, setKeepVideoPlaying] = useState(false) // Keep video after first response
   const messagesEndRef = useRef(null)
   const abortControllerRef = useRef(null)
 
@@ -35,6 +40,10 @@ export default function MentalHealthChatPage() {
   const handleNewChat = () => {
     setMessages([])
     setActiveChat(null)
+    // Reset video when starting new chat
+    setKeepVideoPlaying(false)
+    setIsStreaming(false)
+    setCurrentVideo(null)
   }
 
   const handleChatSelect = async (chatId) => {
@@ -66,6 +75,16 @@ export default function MentalHealthChatPage() {
     setMessages((prev) => [...prev, userMessage, botMessage])
     setInputDisabled(true)
     setIsTyping(true)
+    
+    // Turn off LightRays IMMEDIATELY (before video starts) to prevent lag
+    setKeepVideoPlaying(true)
+    
+    // Start video background when bot starts responding
+    // If video is already playing, keep the same video; otherwise select a new one
+    if (!currentVideo) {
+      setCurrentVideo(getRandomVideo())
+    }
+    setIsStreaming(true)
 
     const controller = new AbortController()
     abortControllerRef.current = controller
@@ -94,6 +113,9 @@ export default function MentalHealthChatPage() {
           )
           setIsTyping(false)
           setInputDisabled(false)
+          
+          // Video continues playing (keepVideoPlaying already set to true)
+          // Don't stop the video - keep it playing
         },
         onError: (error) => {
           console.error('Chat error:', error)
@@ -106,6 +128,13 @@ export default function MentalHealthChatPage() {
           )
           setIsTyping(false)
           setInputDisabled(false)
+          
+          // Keep video playing even on error (if it was already playing)
+          // Only stop if this was the first message
+          if (!keepVideoPlaying) {
+            setIsStreaming(false)
+            setCurrentVideo(null)
+          }
         },
       })
     } catch (error) {
@@ -128,23 +157,28 @@ export default function MentalHealthChatPage() {
 
   return (
     <div className="mental-health-chat-page with-sidebar">
-      {/* Animated Background Layer */}
-      <div className="background-layer">
-        <LightRays
-          raysOrigin="top-center"
-          raysColor="#ffffff"
-          raysSpeed={0.5}
-          lightSpread={1.2}
-          rayLength={3}
-          followMouse={true}
-          mouseInfluence={0.15}
-          noiseAmount={0}
-          distortion={0}
-          pulsating={false}
-          fadeDistance={1.5}
-          saturation={1.0}
-        />
-      </div>
+      {/* Video Background Layer (only during streaming) */}
+      <VideoBackground videoSrc={currentVideo} isActive={isStreaming} />
+
+      {/* Animated Background Layer - Only show when video is NOT playing */}
+      {!keepVideoPlaying && (
+        <div className="background-layer">
+          <LightRays
+            raysOrigin="top-center"
+            raysColor="#ffffff"
+            raysSpeed={0.5}
+            lightSpread={1.2}
+            rayLength={3}
+            followMouse={true}
+            mouseInfluence={0.15}
+            noiseAmount={0}
+            distortion={0}
+            pulsating={false}
+            fadeDistance={1.5}
+            saturation={1.0}
+          />
+        </div>
+      )}
 
       {/* Overlay for readability */}
       <div className="background-overlay" />
