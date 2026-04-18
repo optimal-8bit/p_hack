@@ -1,10 +1,22 @@
 import { useState, useRef, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import { Plus, Mic, X } from 'lucide-react'
+import { Plus, Mic, X, FileText, Film, Music, FileSpreadsheet, Presentation, Archive, File } from 'lucide-react'
 import UploadMenu from './UploadMenu'
 import AudioRecorder from './AudioRecorder'
 import Toast from '../Toast'
 import { getFileInfo } from '../../utils/fileTypeDetector'
+
+// Get appropriate icon for file type
+const getFileIcon = (fileType) => {
+  if (fileType.includes('Image') || fileType.includes('SVG')) return null // Show image preview
+  if (fileType.includes('Video')) return Film
+  if (fileType.includes('Audio')) return Music
+  if (fileType.includes('Spreadsheet') || fileType.includes('CSV')) return FileSpreadsheet
+  if (fileType.includes('Presentation')) return Presentation
+  if (fileType.includes('Archive')) return Archive
+  if (fileType.includes('PDF') || fileType.includes('Word') || fileType.includes('Text') || fileType.includes('JSON') || fileType.includes('XML')) return FileText
+  return File
+}
 
 export default function ChatInput({ onSend, disabled, hasMessages }) {
   const [input, setInput] = useState('')
@@ -12,6 +24,7 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
   const [isRecording, setIsRecording] = useState(false)
   const [toastFileInfo, setToastFileInfo] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null)
   const textareaRef = useRef(null)
 
   useEffect(() => {
@@ -20,6 +33,26 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
     }
   }, [input, isRecording])
+
+  // Create preview URL for images
+  useEffect(() => {
+    if (selectedFile) {
+      const fileInfo = getFileInfo(selectedFile)
+      
+      // Create preview URL for images
+      if (fileInfo.type === 'Image' || fileInfo.type === 'SVG Vector') {
+        const url = URL.createObjectURL(selectedFile)
+        setFilePreviewUrl(url)
+        
+        // Cleanup
+        return () => URL.revokeObjectURL(url)
+      } else {
+        setFilePreviewUrl(null)
+      }
+    } else {
+      setFilePreviewUrl(null)
+    }
+  }, [selectedFile])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -47,6 +80,7 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
       onSend(message)
       setInput('')
       setSelectedFile(null)
+      setFilePreviewUrl(null)
     }
   }
 
@@ -77,6 +111,7 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
 
   const handleRemoveFile = () => {
     setSelectedFile(null)
+    setFilePreviewUrl(null)
   }
 
   const handleSendAudio = (audioBlob, duration) => {
@@ -103,6 +138,7 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
 
   // Get file info for display
   const fileInfo = selectedFile ? getFileInfo(selectedFile) : null
+  const FileIcon = fileInfo ? getFileIcon(fileInfo.type) : null
 
   return (
     <>
@@ -133,22 +169,45 @@ export default function ChatInput({ onSend, disabled, hasMessages }) {
                 />
               </div>
 
-              {/* Input area with file preview */}
+              {/* Input area with file thumbnail */}
               <div className="input-content-wrapper">
-                {/* File preview chip */}
+                {/* File thumbnail preview */}
                 {selectedFile && fileInfo && (
-                  <div className="file-preview-chip">
-                    <span className="file-preview-icon">📎</span>
-                    <span className="file-preview-name">{fileInfo.name}</span>
-                    <span className="file-preview-size">({fileInfo.size})</span>
-                    <button
-                      type="button"
-                      onClick={handleRemoveFile}
-                      className="file-preview-remove"
-                      aria-label="Remove file"
-                    >
-                      <X size={14} />
-                    </button>
+                  <div className="file-thumbnail-container">
+                    <div className="file-thumbnail">
+                      {/* Image preview or file icon */}
+                      {filePreviewUrl ? (
+                        <img 
+                          src={filePreviewUrl} 
+                          alt={fileInfo.name}
+                          className="file-thumbnail-image"
+                        />
+                      ) : FileIcon ? (
+                        <div className="file-thumbnail-icon">
+                          <FileIcon size={32} />
+                        </div>
+                      ) : (
+                        <div className="file-thumbnail-icon">
+                          <File size={32} />
+                        </div>
+                      )}
+                      
+                      {/* Remove button overlay */}
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="file-thumbnail-remove"
+                        aria-label="Remove file"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                    
+                    {/* File info below thumbnail */}
+                    <div className="file-thumbnail-info">
+                      <div className="file-thumbnail-name">{fileInfo.name}</div>
+                      <div className="file-thumbnail-size">{fileInfo.size}</div>
+                    </div>
                   </div>
                 )}
 
