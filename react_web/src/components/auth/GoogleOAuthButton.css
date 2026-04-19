@@ -1,0 +1,102 @@
+.google-oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #3c4043;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.google-oauth-btn:hover {
+  background: #f8f9fa;
+  border-color: #c1c7cd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.google-oauth-btn:active {
+  background: #f1f3f4;
+  border-color: #5f6368;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.google-oauth-btn:focus {
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+.google-icon {
+  flex-shrink: 0;
+}
+
+.google-oauth-btn span {
+  white-space: nowrap;
+}
+
+/* Dark theme support */
+@media (prefers-color-scheme: dark) {
+  .google-oauth-btn {
+    background: #2d2d2d;
+    border-color: #5f6368;
+    color: #e8eaed;
+  }
+
+  .google-oauth-btn:hover {
+    background: #353535;
+    border-color: #8ab4f8;
+  }
+
+  .google-oauth-btn:active {
+    background: #404040;
+  }
+}
+
+/* Integration with existing form styles */
+.auth-form .google-oauth-btn {
+  margin-bottom: 16px;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #dadce0;
+}
+
+.divider span {
+  padding: 0 16px;
+  background: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .divider {
+    color: #9aa0a6;
+  }
+  
+  .divider::before,
+  .divider::after {
+    background: #5f6368;
+  }
+  
+  .divider span {
+    background: #202124;
+  }
+}

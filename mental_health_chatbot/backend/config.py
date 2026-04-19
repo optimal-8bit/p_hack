@@ -71,3 +71,6 @@ LLM_TEMPERATURE = 0.3
 # Server
 HOST = "0.0.0.0"
 PORT = 8000
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")

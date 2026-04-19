@@ -1,18 +1,32 @@
 import { useState, useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
 import PropTypes from 'prop-types'
 import ChatHistoryItem from './ChatHistoryItem'
 import UserProfileSection from './UserProfileSection'
 import HealthStatus from './HealthStatus'
 import { getAllChats } from '../../services/chatHistoryService'
+import { fetchCurrentUser } from '../../features/auth/authSlice'
 
 export default function Sidebar({ activeChat, onChatSelect, onNewChat }) {
   const [chatHistory, setChatHistory] = useState([])
-  const [userProfile] = useState({
-    name: 'Vaibhav Kumar',
-    plan: 'Free',
-  })
   const [loading, setLoading] = useState(true)
   const [isOpen, setIsOpen] = useState(true)
+  
+  const dispatch = useDispatch()
+  const { user, token } = useSelector((state) => state.auth)
+
+  // Fetch user profile if we have a token but no user data
+  useEffect(() => {
+    if (token && !user) {
+      dispatch(fetchCurrentUser())
+    }
+  }, [token, user, dispatch])
+
+  // Create user profile object for display
+  const userProfile = user ? {
+    name: user.name || 'User',
+    plan: user.role === 'doctor' ? 'Doctor' : 'Free',
+  } : null
 
   // Load chat history from localStorage
   const loadChatHistory = () => {

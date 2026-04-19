@@ -5,6 +5,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
+
+# Load environment variables from .env file FIRST
+load_dotenv()
+
 from api.routes import router
 from voice.voice_routes import voice_router
 from api.doctor_routes import router as doctor_router
@@ -15,9 +19,6 @@ from models.translator import get_translation_manager
 from pipeline.orchestrator import get_orchestrator
 from voice.transcriber import get_transcriber
 import config
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(

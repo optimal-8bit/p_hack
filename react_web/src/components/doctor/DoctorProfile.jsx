@@ -1,19 +1,43 @@
-import { useState } from 'react';
-import { authService } from '@/services/auth.service';
-import { useAuthStore } from '@/store/useAuthStore';
-import { handleApiError } from '@/lib/utils';
+import { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchCurrentUser } from '../../features/auth/authSlice';
+import { apiClient } from '../../lib/apiClient';
 import { User, Mail, Phone, Save, UserCircle } from 'lucide-react';
 import DoctorLayout from './DoctorLayout';
 import BorderGlow from '../ui/BorderGlow';
 
 export default function DoctorProfile() {
-  const { user, updateUser } = useAuthStore();
+  const dispatch = useDispatch();
+  const { user, token } = useSelector((state) => state.auth);
+  
   const [formData, setFormData] = useState({
-    name: user?.name || 'Dr. John Smith',
-    phone: user?.phone || '+1 (555) 123-4567',
+    name: user?.name || '',
+    phone: user?.phone || '',
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [isLoadingUser, setIsLoadingUser] = useState(!user && !!token);
+
+  // Fetch user data if not available
+  useEffect(() => {
+    if (token && !user) {
+      setIsLoadingUser(true);
+      dispatch(fetchCurrentUser()).finally(() => {
+        setIsLoadingUser(false);
+      });
+    }
+  }, [token, user, dispatch]);
+
+  // Update form data when user data changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        phone: user.phone || '',
+      });
+      setIsLoadingUser(false);
+    }
+  }, [user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,12 +45,20 @@ export default function DoctorProfile() {
     setMessage('');
 
     try {
-      const updated = await authService.updateProfile(formData);
-      updateUser(updated);
+      // Call the profile update API
+      const updatedUser = await apiClient.put('/auth/me', {
+        name: formData.name,
+        phone: formData.phone,
+      });
+      
+      // Refresh user data
+      dispatch(fetchCurrentUser());
+      
       setMessage('Profile updated successfully');
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setMessage(handleApiError(err));
+      console.error('Profile update error:', err);
+      setMessage(err.response?.data?.detail || 'Failed to update profile');
       setTimeout(() => setMessage(''), 3000);
     } finally {
       setLoading(false);
@@ -50,6 +82,21 @@ export default function DoctorProfile() {
             </div>
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {isLoadingUser && (
+                <div style={{
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  color: '#3b82f6',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
+                  textAlign: 'center',
+                }}>
+                  Loading profile data...
+                </div>
+              )}
+              
               {message && (
                 <div style={{
                   padding: '12px 16px',
@@ -100,8 +147,9 @@ export default function DoctorProfile() {
                   }} />
                   <input
                     type="email"
-                    value={user?.email || 'doctor@mediscan.ai'}
+                    value={user?.email || ''}
                     disabled
+                    placeholder="Email will be loaded..."
                     style={{
                       width: '100%', padding: '12px 12px 12px 44px', borderRadius: 10,
                       background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',

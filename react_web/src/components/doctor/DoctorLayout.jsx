@@ -1,9 +1,18 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
 import { Stethoscope, LogOut } from 'lucide-react';
+import { logout } from '../../features/auth/authSlice';
 import Aurora from '../ui/Aurora';
 
 export default function DoctorLayout({ children, title, icon: Icon }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate('/login');
+  };
 
   const tabs = [
     { name: 'Dashboard', href: '/doctor-dashboard' },
@@ -46,28 +55,31 @@ export default function DoctorLayout({ children, title, icon: Icon }) {
             </div>
 
             {/* Logout Button */}
-            <button style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              borderRadius: 8,
-              background: 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: 'rgba(255,255,255,0.8)',
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-            }}>
+            <button 
+              onClick={handleLogout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 16px',
+                borderRadius: 8,
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.8)',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+              }}
+            >
               <LogOut style={{ width: 16, height: 16 }} />
               Logout
             </button>

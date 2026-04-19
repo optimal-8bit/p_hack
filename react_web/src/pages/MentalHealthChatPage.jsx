@@ -35,6 +35,9 @@ export default function MentalHealthChatPage() {
   const abortControllerRef = useRef(null)
   const navigate = useNavigate()
 
+  // Initialize TTS hook
+  const { isSupported, isMuted, isSpeaking, toggleMute, cancelSpeech } = useTextToSpeech()
+
   // Save messages to localStorage whenever they change
   useEffect(() => {
     if (messages.length > 0) {

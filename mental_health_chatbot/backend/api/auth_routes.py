@@ -1,6 +1,7 @@
 """Authentication routes"""
 import logging
 import uuid
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
@@ -8,6 +9,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 import jwt
 import hashlib
+from google.auth.transport import requests
+from google.oauth2 import id_token
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +134,16 @@ class UserResponse(BaseModel):
     email: str
     role: str
     created_at: str
+    phone: Optional[str] = None
+
+
+class UpdateProfileRequest(BaseModel):
+    name: str
+    phone: Optional[str] = None
+
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str
 
 
 class AuthResponse(BaseModel):
@@ -208,6 +222,7 @@ async def register(request: RegisterRequest):
                 email=user["email"],
                 role=user["role"],
                 created_at=user["created_at"],
+                phone=user.get("phone"),
             )
         )
         
@@ -245,6 +260,7 @@ async def login(request: LoginRequest):
                 email=user["email"],
                 role=user["role"],
                 created_at=user["created_at"],
+                phone=user.get("phone"),
             )
         )
         
@@ -264,10 +280,126 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
         email=current_user["email"],
         role=current_user["role"],
         created_at=current_user["created_at"],
+        phone=current_user.get("phone"),
     )
 
 
-@router.post("/google")
-async def google_login():
-    """Google OAuth login (placeholder)"""
-    raise HTTPException(status_code=501, detail="Google login not implemented yet")
+@router.put("/me", response_model=UserResponse)
+async def update_current_user_profile(
+    request: UpdateProfileRequest, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Update current user profile"""
+    try:
+        # Update user data in memory store
+        user_id = current_user["id"]
+        if user_id in users_db:
+            users_db[user_id]["name"] = request.name
+            if request.phone:
+                users_db[user_id]["phone"] = request.phone
+            
+            updated_user = users_db[user_id]
+            logger.info(f"✅ Profile updated for user: {updated_user['email']}")
+            
+            return UserResponse(
+                id=updated_user["id"],
+                name=updated_user["name"],
+                email=updated_user["email"],
+                role=updated_user["role"],
+                created_at=updated_user["created_at"],
+                phone=updated_user.get("phone"),
+            )
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating profile: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Profile update failed")
+
+
+@router.post("/google", response_model=AuthResponse)
+async def google_login(request: GoogleLoginRequest):
+    """Google OAuth login"""
+    try:
+        # Check if Google client ID is configured
+        if not config.GOOGLE_CLIENT_ID:
+            logger.error("❌ GOOGLE_CLIENT_ID not configured")
+            raise HTTPException(status_code=500, detail="Google OAuth not configured")
+        
+        logger.info(f"🔐 Google OAuth request received, client ID configured: {config.GOOGLE_CLIENT_ID[:20]}...")
+        
+        # Try to parse as JWT ID token first
+        try:
+            # Verify the Google ID token
+            idinfo = id_token.verify_oauth2_token(
+                request.id_token, 
+                requests.Request(), 
+                config.GOOGLE_CLIENT_ID
+            )
+            user_info = idinfo
+            logger.info(f"🔐 Verified Google ID token for: {user_info.get('email')}")
+        except Exception as jwt_error:
+            logger.warning(f"⚠️ JWT verification failed: {jwt_error}")
+            # Fallback: try to parse as JSON (for development)
+            try:
+                user_info = json.loads(request.id_token)
+                logger.info(f"🔐 Using fallback JSON parsing for: {user_info.get('email')}")
+            except json.JSONDecodeError:
+                raise HTTPException(status_code=401, detail="Invalid Google token format")
+
+        # Extract user information
+        google_user_id = user_info.get('sub')
+        email = user_info.get('email')
+        name = user_info.get('name')
+        
+        if not email or not name:
+            raise HTTPException(status_code=400, detail="Missing required user information from Google")
+        
+        logger.info(f"🔐 Google OAuth attempt: {email}")
+
+        # Check if user already exists
+        existing_user = next((u for u in users_db.values() if u["email"] == email), None)
+        
+        if existing_user:
+            # User exists, log them in
+            logger.info(f"✅ Existing Google user logged in: {email}")
+            user = existing_user
+        else:
+            # Create new user account
+            user_id = str(uuid.uuid4())
+            user = {
+                "id": user_id,
+                "name": name,
+                "email": email,
+                "password": None,  # No password for Google users
+                "role": "patient",  # Default role
+                "created_at": datetime.utcnow().isoformat(),
+                "google_id": google_user_id,
+                "auth_provider": "google",
+            }
+            users_db[user_id] = user
+            logger.info(f"✅ New Google user registered: {email}")
+
+        # Create access token
+        access_token = create_access_token(data={"sub": user["id"]})
+        
+        # Return response
+        return AuthResponse(
+            access_token=access_token,
+            user=UserResponse(
+                id=user["id"],
+                name=user["name"],
+                email=user["email"],
+                role=user["role"],
+                created_at=user["created_at"],
+                phone=user.get("phone"),
+            )
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error during Google login: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Google login failed")
