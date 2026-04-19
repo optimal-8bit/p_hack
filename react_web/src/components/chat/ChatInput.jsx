@@ -322,12 +322,6 @@ export default function ChatInput({ onSend, disabled, hasMessages, sessionId, on
             </div>
           )}
         </form>
-        {!hasMessages && !isRecording && !isVoiceInput && !isVoicePipeline && (
-          <p className="input-hint">
-            <Mic size={14} style={{display: 'inline', verticalAlign: 'middle'}} /> Voice-to-text | 
-            <Waves size={14} style={{display: 'inline', verticalAlign: 'middle', marginLeft: '8px'}} /> Voice with emotion analysis
-          </p>
-        )}
       </div>
     </>
   )

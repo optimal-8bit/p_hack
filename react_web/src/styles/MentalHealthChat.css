@@ -601,6 +601,7 @@
 
 .input-container {
   display: flex;
+  width: 100%;
   align-items: flex-end;
   background: #2f2f2f;
   border-radius: 1.5rem;
@@ -670,13 +671,6 @@
   background: #3a3a3a;
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.input-hint {
-  text-align: center;
-  font-size: 0.875rem;
-  color: #888;
-  margin-top: 0.75rem;
 }
 
 /* ========== RESPONSIVE DESIGN ========== */
