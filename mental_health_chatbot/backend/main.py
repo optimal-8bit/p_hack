@@ -49,7 +49,7 @@ app.include_router(doctor_router)
 
 # Include auth routes
 from api.auth_routes import router as auth_router
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api/v1")
 
 
 @app.on_event("startup")

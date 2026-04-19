@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Stethoscope, AlertCircle, Calendar, X, Clock, User } from 'lucide-react';
 import { doctorService } from '@/services/doctor.service';
+import MorphingLoader from '../MorphingLoader';
 
 export default function DoctorRecommendation({ recommendation, sessionId }) {
   const [doctors, setDoctors] = useState([]);

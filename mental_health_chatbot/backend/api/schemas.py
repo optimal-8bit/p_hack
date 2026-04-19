@@ -41,6 +41,14 @@ class IntentScore(BaseModel):
     confidence: float
 
 
+class DoctorRecommendationInfo(BaseModel):
+    """Doctor recommendation info to include in chat response"""
+    should_recommend: bool
+    specialization: Optional[str] = None
+    reason: Optional[str] = None
+    urgency: Optional[str] = None
+
+
 class ChatResponseSchema(BaseModel):
     response_text: str
     detected_language: str

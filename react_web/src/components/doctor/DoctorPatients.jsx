@@ -4,6 +4,7 @@ import { handleApiError } from '@/lib/utils';
 import { Users, Mail, Phone } from 'lucide-react';
 import DoctorLayout from './DoctorLayout';
 import BorderGlow from '../ui/BorderGlow';
+import MorphingLoader from '../MorphingLoader';
 
 export default function DoctorPatients() {
   const [patients, setPatients] = useState([]);
@@ -27,12 +28,11 @@ export default function DoctorPatients() {
   return (
     <DoctorLayout title="My Patients" icon={Users}>
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-          <div style={{
-            width: 48, height: 48, border: '4px solid rgba(124, 255, 103, 0.2)',
-            borderTop: '4px solid #7cff67', borderRadius: '50%', animation: 'spin 1s linear infinite',
-          }}></div>
-        </div>
+        <MorphingLoader 
+          size="lg" 
+          color="yellow" 
+          message="Loading patients..."
+        />
       ) : (
         <BorderGlow glowColor="210 60 40" backgroundColor="rgba(18, 15, 23, 0.85)">
           <div style={{ padding: '2rem' }}>

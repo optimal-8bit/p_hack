@@ -1,0 +1,162 @@
+/* Morphing Loader Styles */
+
+.morphing-loader-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  width: 100%;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.morphing-loader-container.visible {
+  opacity: 1;
+}
+
+.morphing-loader-fullscreen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.morphing-loader-fullscreen.visible {
+  opacity: 1;
+}
+
+.morphing-loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* Morphing Shape Animation */
+.morphing-shape {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  animation: 
+    morphShape 4s ease-in-out infinite,
+    rotateShape 8s linear infinite,
+    scaleShape 4s ease-in-out infinite;
+  box-shadow: 
+    0 8px 32px rgba(251, 191, 36, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  will-change: transform, border-radius;
+}
+
+/* Keyframe: Morph between shapes */
+@keyframes morphShape {
+  0%, 100% {
+    border-radius: 50%;
+    /* Circle */
+  }
+  25% {
+    border-radius: 20%;
+    /* Rounded square */
+  }
+  50% {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    /* Blob shape 1 */
+  }
+  75% {
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    /* Blob shape 2 */
+  }
+}
+
+/* Keyframe: Rotate continuously */
+@keyframes rotateShape {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Keyframe: Subtle scaling pulse */
+@keyframes scaleShape {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Loading Message */
+.morphing-loader-message {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin: 0;
+  animation: fadeInOut 2s ease-in-out infinite;
+}
+
+@keyframes fadeInOut {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  .morphing-shape {
+    animation: 
+      scaleShapeReduced 2s ease-in-out infinite;
+  }
+  
+  @keyframes scaleShapeReduced {
+    0%, 100% {
+      opacity: 0.8;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  
+  .morphing-loader-message {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
+/* Fade out transition */
+.morphing-loader-container.fade-out,
+.morphing-loader-fullscreen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .morphing-loader-container {
+    min-height: 300px;
+  }
+  
+  .morphing-loader-message {
+    font-size: 0.8125rem;
+  }
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .morphing-loader-fullscreen {
+    background: rgba(0, 0, 0, 0.7);
+  }
+}

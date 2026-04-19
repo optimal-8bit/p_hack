@@ -6,7 +6,7 @@ import './WebcamEmotionDetector.css';
  * Webcam emotion detector component
  * Shows live webcam feed with emotion detection overlay
  */
-const WebcamEmotionDetector = ({ enabled, onEmotionDetected, compact = false }) => {
+const WebcamEmotionDetector = ({ enabled, onEmotionDetected, onClose, compact = false }) => {
   const {
     videoRef,
     canvasRef,
@@ -39,6 +39,14 @@ const WebcamEmotionDetector = ({ enabled, onEmotionDetected, compact = false }) 
       onEmotionDetected(currentEmotion);
     }
   }, [currentEmotion, onEmotionDetected]);
+
+  // Handle close button click
+  const handleClose = () => {
+    stopWebcam();
+    if (onClose) {
+      onClose();
+    }
+  };
 
   if (!enabled) {
     return null;
@@ -113,7 +121,7 @@ const WebcamEmotionDetector = ({ enabled, onEmotionDetected, compact = false }) 
 
         <button 
           className="webcam-close-btn"
-          onClick={stopWebcam}
+          onClick={handleClose}
           title="Disable webcam"
         >
           ✕

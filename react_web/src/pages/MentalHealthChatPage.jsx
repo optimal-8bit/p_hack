@@ -8,9 +8,12 @@ import TypingIndicator from '../components/chat/TypingIndicator'
 import LightRays from '../components/LightRays'
 import VideoBackground from '../components/VideoBackground'
 import WebcamEmotionDetector from '../components/WebcamEmotionDetector'
+import TTSControl from '../components/chat/TTSControl'
+import { CameraIcon } from '../components/CameraIcon'
 import { chatService } from '../services/chatService'
 import { saveChat, getChatBySessionId } from '../services/chatHistoryService'
 import { getRandomVideo } from '../utils/videoHelper'
+import { useTextToSpeech } from '../hooks/useTextToSpeech'
 import '../styles/MentalHealthChat.css'
 
 function createMessageId() {
@@ -88,6 +91,9 @@ export default function MentalHealthChatPage() {
   const handleSendMessage = async (userInput) => {
     if (!userInput.trim() || inputDisabled) return
 
+    // Cancel any ongoing speech when user sends a new message
+    cancelSpeech();
+
     console.log('💬 [CHAT] Sending message:', {
       message: userInput.trim(),
       hasFacialEmotion: !!currentFacialEmotion,
@@ -131,6 +137,13 @@ export default function MentalHealthChatPage() {
       { role: 'user', content: userInput.trim() },
     ]
 
+    // Simple parallel TTS: Start early indicator, then speak complete response
+    let accumulatedResponse = '';
+    let shouldSpeak = false;
+    let hasReachedTwoLines = false; // Track if we've reached 2 lines for this message
+
+    console.log('🎯 [TTS] Starting new message processing');
+
     try {
       await chatService.streamReply({
         messages: conversationHistory,
@@ -138,11 +151,30 @@ export default function MentalHealthChatPage() {
         sessionId: sessionId,
         facialEmotion: currentFacialEmotion, // Pass facial emotion to backend
         onToken: (token) => {
+          // Update the streaming message
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === botMessage.id ? { ...msg, content: msg.content + token } : msg
             )
           )
+          
+          // Accumulate response
+          accumulatedResponse += token;
+          
+          // Mark that we should speak after 2 lines appear (only check once per message)
+          if (!hasReachedTwoLines && isSupported && !isMuted) {
+            const lineCount = (accumulatedResponse.match(/\n/g) || []).length;
+            const hasEnoughContent = accumulatedResponse.length >= 100;
+            
+            console.log('🎯 [TTS] Checking lines:', lineCount, 'chars:', accumulatedResponse.length);
+            
+            if (lineCount >= 2 || hasEnoughContent) {
+              hasReachedTwoLines = true;
+              shouldSpeak = true;
+              console.log('🎯 [TTS] ✅ 2 lines detected! Will speak complete response when ready');
+              console.log('🎯 [TTS] Current content preview:', accumulatedResponse.substring(0, 100) + '...');
+            }
+          }
         },
         onDone: (result) => {
           console.log('✅ [CHAT] Message completed:', {
@@ -171,7 +203,102 @@ export default function MentalHealthChatPage() {
                   } 
                 : msg
             )
-          )
+          );
+          
+          // Speak the COMPLETE response when streaming finishes
+          console.log('🎯 [TTS] Stream finished. shouldSpeak:', shouldSpeak, 'isSupported:', isSupported, 'isMuted:', isMuted);
+          console.log('🎯 [TTS] Final response length:', accumulatedResponse.length);
+          
+          if (shouldSpeak && isSupported && !isMuted && accumulatedResponse.trim()) {
+            console.log('🎯 [TTS] ✅ Speaking COMPLETE response:', accumulatedResponse.length, 'chars');
+            console.log('🎯 [TTS] Speech synthesis state:', {
+              speaking: window.speechSynthesis.speaking,
+              pending: window.speechSynthesis.pending,
+              paused: window.speechSynthesis.paused
+            });
+            
+            // Cancel any existing speech before starting new one
+            if (window.speechSynthesis.speaking) {
+              console.log('🎯 [TTS] Canceling existing speech');
+              window.speechSynthesis.cancel();
+            }
+            
+            setTimeout(() => {
+              const utterance = new SpeechSynthesisUtterance(accumulatedResponse);
+              utterance.rate = 0.9; // Calm rate
+              utterance.pitch = 1.0;
+              utterance.volume = 1.0;
+              
+              // Get appropriate voice for language
+              const voices = window.speechSynthesis.getVoices();
+              const targetLang = result?.metadata?.detected_language || 'en';
+              const voice = voices.find(v => v.lang.startsWith(targetLang)) || voices[0];
+              if (voice) utterance.voice = voice;
+              
+              utterance.onstart = () => {
+                console.log('🗣️ [TTS] ✅ Started speaking complete response');
+                console.log('🗣️ [TTS] Text being spoken:', accumulatedResponse.substring(0, 100) + '...');
+                console.log('🗣️ [TTS] Full text length:', accumulatedResponse.length);
+              };
+              
+              utterance.onend = () => {
+                console.log('✅ [TTS] ✅ Finished speaking complete response');
+                console.log('✅ [TTS] Speech completed successfully');
+              };
+              
+              utterance.onerror = (event) => {
+                console.error('❌ [TTS] Speech error:', event.error);
+                console.error('❌ [TTS] Error details:', event);
+              };
+              
+              utterance.onpause = () => {
+                console.log('⏸️ [TTS] Speech paused');
+              };
+              
+              utterance.onresume = () => {
+                console.log('▶️ [TTS] Speech resumed');
+              };
+              
+              utterance.onboundary = (event) => {
+                console.log('🎯 [TTS] Speech boundary:', event.name, 'at char:', event.charIndex);
+              };
+              
+              window.speechSynthesis.speak(utterance);
+            }, 50);
+          } else if (!shouldSpeak && isSupported && !isMuted && accumulatedResponse.trim()) {
+            // Short response (less than 2 lines) - speak it anyway
+            console.log('🎯 [TTS] ✅ Speaking short response:', accumulatedResponse.length, 'chars');
+            
+            setTimeout(() => {
+              const utterance = new SpeechSynthesisUtterance(accumulatedResponse);
+              utterance.rate = 0.9;
+              utterance.pitch = 1.0;
+              utterance.volume = 1.0;
+              
+              const voices = window.speechSynthesis.getVoices();
+              const targetLang = result?.metadata?.detected_language || 'en';
+              const voice = voices.find(v => v.lang.startsWith(targetLang)) || voices[0];
+              if (voice) utterance.voice = voice;
+              
+              utterance.onstart = () => {
+                console.log('🗣️ [TTS] ✅ Started speaking short response');
+              };
+              
+              utterance.onend = () => {
+                console.log('✅ [TTS] ✅ Finished speaking short response');
+              };
+              
+              window.speechSynthesis.speak(utterance);
+            }, 50);
+          } else {
+            console.log('❌ [TTS] Not speaking because:', {
+              shouldSpeak,
+              isSupported,
+              isMuted,
+              hasContent: !!accumulatedResponse.trim()
+            });
+          }
+          
           setIsTyping(false)
           setInputDisabled(false)
         },
@@ -303,9 +430,19 @@ export default function MentalHealthChatPage() {
               <WebcamEmotionDetector
                 enabled={webcamEnabled}
                 onEmotionDetected={setCurrentFacialEmotion}
+                onClose={() => setWebcamEnabled(false)}
                 compact={true}
               />
             </div>
+          )}
+
+          {/* TTS Control Button */}
+          {isSupported && (
+            <TTSControl 
+              isMuted={isMuted}
+              onToggle={toggleMute}
+              isSpeaking={isSpeaking}
+            />
           )}
 
           {/* Webcam Toggle Button */}
@@ -314,7 +451,7 @@ export default function MentalHealthChatPage() {
             onClick={() => setWebcamEnabled(!webcamEnabled)}
             title={webcamEnabled ? 'Disable facial emotion detection' : 'Enable facial emotion detection'}
           >
-            {webcamEnabled ? '📹' : '📷'}
+            <CameraIcon className="w-6 h-6" />
           </button>
 
           <ChatContainer hasMessages={hasMessages}>

@@ -2,3 +2,128 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Markdown Styling */
+.markdown-view {
+  @apply text-sm leading-relaxed;
+}
+
+.markdown-view p {
+  @apply my-2;
+}
+
+.markdown-view h1,
+.markdown-view h2,
+.markdown-view h3,
+.markdown-view h4,
+.markdown-view h5,
+.markdown-view h6 {
+  @apply font-bold mt-4 mb-2;
+}
+
+.markdown-view h1 {
+  @apply text-2xl;
+}
+
+.markdown-view h2 {
+  @apply text-xl;
+}
+
+.markdown-view h3 {
+  @apply text-lg;
+}
+
+.markdown-view ul,
+.markdown-view ol {
+  @apply my-2 ml-6;
+}
+
+.markdown-view ul {
+  @apply list-disc;
+}
+
+.markdown-view ol {
+  @apply list-decimal;
+}
+
+.markdown-view li {
+  @apply my-1;
+}
+
+.markdown-view code {
+  @apply px-1.5 py-0.5 rounded text-xs font-mono;
+}
+
+.markdown-assistant code {
+  @apply bg-gray-100 text-gray-800;
+}
+
+.markdown-user code {
+  @apply bg-blue-500/30 text-blue-50;
+}
+
+.markdown-view pre {
+  @apply my-3 p-4 rounded-xl overflow-x-auto bg-gray-900 text-gray-100;
+}
+
+.markdown-view pre code {
+  @apply bg-transparent text-gray-100 p-0;
+}
+
+.markdown-view a {
+  @apply underline hover:no-underline;
+}
+
+.markdown-assistant a {
+  @apply text-blue-600 hover:text-blue-700;
+}
+
+.markdown-user a {
+  @apply text-blue-200 hover:text-blue-100;
+}
+
+.markdown-view strong {
+  @apply font-bold;
+}
+
+.markdown-view em {
+  @apply italic;
+}
+
+/* Custom Scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
+
+/* Smooth transitions */
+* {
+  @apply transition-colors duration-150;
+}
+
+button,
+a {
+  @apply transition-all duration-200;
+}

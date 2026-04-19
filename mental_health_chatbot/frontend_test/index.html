@@ -56,11 +56,22 @@
             background: #16213e;
             border-radius: 10px;
             margin-bottom: 20px;
+            min-height: 300px;
+            max-height: calc(100vh - 200px);
+            scroll-behavior: smooth;
+            /* Performance optimizations */
+            transform: translateZ(0);
+            -webkit-overflow-scrolling: touch;
+            contain: layout style paint;
         }
 
         .message {
             margin-bottom: 20px;
             animation: fadeIn 0.3s;
+            will-change: transform, opacity;
+            /* Performance optimizations */
+            transform: translateZ(0);
+            contain: layout style paint;
         }
 
         @keyframes fadeIn {
@@ -267,6 +278,38 @@
             to { transform: rotate(360deg); }
         }
 
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26, 26, 46, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(2px);
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #0f3460;
+        }
+
+        .loading-content .loading {
+            width: 30px;
+            height: 30px;
+            margin-bottom: 10px;
+        }
+
         .controls {
             margin-top: 20px;
         }
@@ -274,6 +317,25 @@
         .controls button {
             width: 100%;
             margin-bottom: 10px;
+        }
+
+        /* Responsive design for smaller screens */
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                border-left: none;
+                border-top: 2px solid #0f3460;
+                max-height: 200px;
+            }
+            
+            .chat-window {
+                max-height: calc(100vh - 400px);
+                min-height: 200px;
+            }
         }
     </style>
 </head>

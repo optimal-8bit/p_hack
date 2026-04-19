@@ -4,6 +4,7 @@ import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
 import { FileText, Pill } from 'lucide-react';
 import DoctorLayout from './DoctorLayout';
 import BorderGlow from '../ui/BorderGlow';
+import MorphingLoader from '../MorphingLoader';
 
 export default function DoctorPrescriptions() {
   const [prescriptions, setPrescriptions] = useState([]);
@@ -27,12 +28,11 @@ export default function DoctorPrescriptions() {
   return (
     <DoctorLayout title="Issued Prescriptions" icon={FileText}>
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-          <div style={{
-            width: 48, height: 48, border: '4px solid rgba(124, 255, 103, 0.2)',
-            borderTop: '4px solid #7cff67', borderRadius: '50%', animation: 'spin 1s linear infinite',
-          }}></div>
-        </div>
+        <MorphingLoader 
+          size="lg" 
+          color="yellow" 
+          message="Loading prescriptions..."
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {prescriptions.length > 0 ? (

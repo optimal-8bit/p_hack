@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="24" height="24">
+  <!-- Camera body outline -->
+  <path d="M896 256H768l-64-64H320l-64 64H128c-35.3 0-64 28.7-64 64v512c0 35.3 28.7 64 64 64h768c35.3 0 64-28.7 64-64V320c0-35.3-28.7-64-64-64z" 
+        fill="#B3E5FC" 
+        stroke="#000" 
+        stroke-width="40"/>
+  
+  <!-- Pink/Red middle section -->
+  <rect x="64" y="448" width="896" height="256" fill="#FF6B9D"/>
+  
+  <!-- Camera lens outer ring -->
+  <circle cx="512" cy="576" r="192" fill="#666" stroke="#000" stroke-width="40"/>
+  
+  <!-- Camera lens middle ring -->
+  <circle cx="512" cy="576" r="144" fill="#999"/>
+  
+  <!-- Camera lens inner white -->
+  <circle cx="512" cy="576" r="96" fill="#FFF"/>
+  
+  <!-- Lens reflection -->
+  <path d="M480 520 Q 500 540, 520 560" fill="none" stroke="#000" stroke-width="20" stroke-linecap="round"/>
+  
+  <!-- Top viewfinder -->
+  <rect x="320" y="128" width="384" height="128" rx="32" fill="#B3E5FC" stroke="#000" stroke-width="40"/>
+  
+  <!-- Viewfinder detail -->
+  <rect x="440" y="176" width="144" height="32" rx="8" fill="#000"/>
+  
+  <!-- Flash/button details -->
+  <circle cx="800" cy="352" r="16" fill="#000"/>
+  <rect x="864" y="336" width="64" height="32" rx="16" fill="#000"/>
+  
+  <!-- Small grip circle -->
+  <circle cx="160" cy="224" r="32" fill="#B3E5FC" stroke="#000" stroke-width="32"/>
+</svg>

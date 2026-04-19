@@ -4,6 +4,7 @@ import { formatDateTime, getStatusColor, handleApiError } from '@/lib/utils';
 import { Calendar, Check, X } from 'lucide-react';
 import DoctorLayout from './DoctorLayout';
 import BorderGlow from '../ui/BorderGlow';
+import MorphingLoader from '../MorphingLoader';
 
 export default function DoctorAppointments() {
   const [appointments, setAppointments] = useState([]);
@@ -41,12 +42,11 @@ export default function DoctorAppointments() {
   return (
     <DoctorLayout title="Appointments" icon={Calendar}>
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '400px' }}>
-          <div style={{
-            width: 48, height: 48, border: '4px solid rgba(124, 255, 103, 0.2)',
-            borderTop: '4px solid #7cff67', borderRadius: '50%', animation: 'spin 1s linear infinite',
-          }}></div>
-        </div>
+        <MorphingLoader 
+          size="lg" 
+          color="yellow" 
+          message="Loading appointments..."
+        />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {appointments.length > 0 ? (
