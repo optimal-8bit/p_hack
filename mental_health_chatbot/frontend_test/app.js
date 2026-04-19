@@ -1,5 +1,7 @@
 // Configuration
 const API_BASE_URL = 'http://localhost:8000';
+const MAX_MESSAGES = 50; // Limit messages to prevent performance issues
+const SCROLL_THROTTLE_MS = 100; // Throttle scroll updates
 
 // State
 let sessionId = generateUUID();
@@ -7,6 +9,8 @@ let isProcessing = false;
 let mediaRecorder = null;
 let audioChunks = [];
 let isRecording = false;
+let messageCount = 0;
+let scrollTimeout = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -23,12 +27,40 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('clearButton').addEventListener('click', clearSession);
     document.getElementById('refreshHealthButton').addEventListener('click', loadHealthStatus);
     
+    // Debounced resize handler
+let resizeTimeout = null;
+function handleResize() {
+    if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+    }
+    
+    resizeTimeout = setTimeout(() => {
+        requestAnimationFrame(adjustChatHeight);
+        resizeTimeout = null;
+    }, 150);
+}
+
+    // Window resize handler for dynamic height adjustment
+    window.addEventListener('resize', handleResize);
+    
+    // Initial height adjustment
+    requestAnimationFrame(adjustChatHeight);
+    
     // Load initial health status
     loadHealthStatus();
     
     // Auto-refresh health every 10 seconds
     setInterval(loadHealthStatus, 10000);
 });
+
+// Performance monitoring
+function logPerformance(operation, startTime) {
+    const endTime = performance.now();
+    const duration = endTime - startTime;
+    if (duration > 100) { // Log operations taking more than 100ms
+        console.warn(`Performance: ${operation} took ${duration.toFixed(2)}ms`);
+    }
+}
 
 // Generate UUID for session
 function generateUUID() {
@@ -95,8 +127,12 @@ async function sendMessage() {
 
 // Add message to chat
 function addMessage(type, content, includeMetadata = true) {
+    const startTime = performance.now();
     const chatWindow = document.getElementById('chatWindow');
     const messageId = `msg-${Date.now()}-${Math.random()}`;
+    
+    // Clean up old messages if we have too many
+    cleanupOldMessages();
     
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${type}`;
@@ -109,15 +145,85 @@ function addMessage(type, content, includeMetadata = true) {
     messageDiv.appendChild(contentDiv);
     chatWindow.appendChild(messageDiv);
     
-    // Scroll to bottom
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    messageCount++;
+    
+    // Smooth scroll to bottom with auto-height adjustment
+    requestAnimationFrame(() => {
+        adjustChatHeight();
+        smoothScrollToBottom();
+        logPerformance('addMessage', startTime);
+    });
     
     return messageId;
+}
+
+// Clean up old messages to prevent performance issues
+function cleanupOldMessages() {
+    const chatWindow = document.getElementById('chatWindow');
+    const messages = chatWindow.querySelectorAll('.message');
+    
+    if (messages.length >= MAX_MESSAGES) {
+        // Remove oldest messages, keeping the initial greeting
+        const messagesToRemove = messages.length - MAX_MESSAGES + 5;
+        for (let i = 1; i < messagesToRemove + 1; i++) { // Start from 1 to keep greeting
+            if (messages[i]) {
+                messages[i].remove();
+                messageCount--;
+            }
+        }
+    }
+}
+
+// Adjust chat window height dynamically
+function adjustChatHeight() {
+    const chatWindow = document.getElementById('chatWindow');
+    const chatContainer = document.querySelector('.chat-container');
+    const inputContainer = document.querySelector('.input-container');
+    const voiceIndicator = document.getElementById('voiceIndicator');
+    
+    // Calculate available height
+    const windowHeight = window.innerHeight;
+    const headerHeight = document.querySelector('.header').offsetHeight;
+    const inputHeight = inputContainer.offsetHeight;
+    const voiceHeight = voiceIndicator.classList.contains('active') ? voiceIndicator.offsetHeight : 0;
+    const padding = 60; // Account for padding and margins
+    
+    const availableHeight = windowHeight - headerHeight - inputHeight - voiceHeight - padding;
+    const minHeight = 300;
+    const maxHeight = Math.max(availableHeight, minHeight);
+    
+    chatWindow.style.maxHeight = `${maxHeight}px`;
+    chatWindow.style.minHeight = `${minHeight}px`;
+}
+
+// Smooth scroll to bottom with throttling
+function smoothScrollToBottom() {
+    if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+    }
+    
+    scrollTimeout = setTimeout(() => {
+        const chatWindow = document.getElementById('chatWindow');
+        chatWindow.scrollTo({
+            top: chatWindow.scrollHeight,
+            behavior: 'smooth'
+        });
+        scrollTimeout = null;
+    }, SCROLL_THROTTLE_MS);
+}
+
+// Immediate scroll to bottom (for urgent cases)
+function immediateScrollToBottom() {
+    const chatWindow = document.getElementById('chatWindow');
+    chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
 // Add bot response with metadata
 function addBotResponse(data) {
     const chatWindow = document.getElementById('chatWindow');
+    
+    // Clean up old messages if we have too many
+    cleanupOldMessages();
     
     const messageDiv = document.createElement('div');
     messageDiv.className = `message bot ${data.is_crisis ? 'crisis' : ''}`;
@@ -153,8 +259,13 @@ function addBotResponse(data) {
     messageDiv.appendChild(contentDiv);
     chatWindow.appendChild(messageDiv);
     
-    // Scroll to bottom
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    messageCount++;
+    
+    // Smooth scroll to bottom with auto-height adjustment
+    requestAnimationFrame(() => {
+        adjustChatHeight();
+        smoothScrollToBottom();
+    });
 }
 
 // Remove message
@@ -258,9 +369,15 @@ async function clearSession() {
             </div>
         `;
         
+        // Reset message count
+        messageCount = 1; // Account for the greeting message
+        
         // Generate new session ID
         sessionId = generateUUID();
         document.getElementById('sessionId').textContent = sessionId;
+        
+        // Adjust height after clearing
+        requestAnimationFrame(adjustChatHeight);
         
     } catch (error) {
         console.error('Error clearing session:', error);
@@ -399,6 +516,9 @@ async function sendVoiceMessage(audioBlob) {
 function addVoiceResponse(data) {
     const chatWindow = document.getElementById('chatWindow');
     
+    // Clean up old messages if we have too many
+    cleanupOldMessages();
+    
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message bot';
     
@@ -449,6 +569,11 @@ function addVoiceResponse(data) {
     messageDiv.appendChild(contentDiv);
     chatWindow.appendChild(messageDiv);
     
-    // Scroll to bottom
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    messageCount++;
+    
+    // Smooth scroll to bottom with auto-height adjustment
+    requestAnimationFrame(() => {
+        adjustChatHeight();
+        smoothScrollToBottom();
+    });
 }
